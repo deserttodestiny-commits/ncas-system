@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-ncas-dark: #1F3864;
+  --color-ncas-blue: #2E75B6;
+  --color-ncas-gold: #B8860B;
+  --color-ncas-light: #DEEAF1;
+  --color-ncas-success: #375623;
+  --color-ncas-warning: #C55A11;
+  --color-ncas-danger: #C00000;
+  --font-sans: 'Noto Sans Devanagari', 'Inter', system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-ncas-light);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #b9c6d6;
+  border-radius: 8px;
+}
+
+@media print {
+  .no-print { display: none !important; }
+}

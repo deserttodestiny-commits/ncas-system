@@ -1,0 +1,151 @@
+import { useState } from 'react'
+import {
+  ART_FIELDS, DISTRICTS, EMPLOYMENT_STATUSES, MEMBERSHIP_TYPES, PAYMENT_STATUSES,
+} from '../../data/districts'
+
+const emptyForm = {
+  fullName: '', gender: 'पुरुष', dob: '', citizenshipNo: '', phone: '', email: '',
+  district: DISTRICTS[0], municipality: '', wardNo: '', artFields: [], experienceYears: '',
+  employmentStatus: EMPLOYMENT_STATUSES[0], organizationName: '', membershipType: MEMBERSHIP_TYPES[0],
+  joinDate: new Date().toISOString().slice(0, 10), paymentStatus: 'Pending',
+  paymentExpiryDate: '', monthlyFee: 100, notes: '',
+}
+
+export default function MemberForm({ initial, onCancel, onSubmit }) {
+  const [form, setForm] = useState(() => (initial ? { ...emptyForm, ...initial } : emptyForm))
+
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const toggleArtField = (field) => {
+    setForm((f) => ({
+      ...f,
+      artFields: f.artFields.includes(field) ? f.artFields.filter((x) => x !== field) : [...f.artFields, field],
+    }))
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSubmit(form)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">पूरा नाम *</label>
+          <input required value={form.fullName} onChange={set('fullName')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">लिङ्ग</label>
+          <select value={form.gender} onChange={set('gender')} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <option>पुरुष</option>
+            <option>महिला</option>
+            <option>अन्य</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">जन्म मिति</label>
+          <input type="date" value={form.dob} onChange={set('dob')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">नागरिकता नं.</label>
+          <input value={form.citizenshipNo} onChange={set('citizenshipNo')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">फोन नम्बर *</label>
+          <input required value={form.phone} onChange={set('phone')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">इमेल</label>
+          <input type="email" value={form.email} onChange={set('email')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">जिल्ला</label>
+          <select value={form.district} onChange={set('district')} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            {DISTRICTS.map((d) => <option key={d}>{d}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">नगरपालिका/गाउँपालिका</label>
+          <input value={form.municipality} onChange={set('municipality')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">वडा नं.</label>
+          <input value={form.wardNo} onChange={set('wardNo')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">अनुभव (वर्ष)</label>
+          <input type="number" min="0" value={form.experienceYears} onChange={set('experienceYears')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">रोजगारी स्थिति</label>
+          <select value={form.employmentStatus} onChange={set('employmentStatus')} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            {EMPLOYMENT_STATUSES.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">संस्था/पसलको नाम</label>
+          <input value={form.organizationName} onChange={set('organizationName')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">कला क्षेत्र</label>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {ART_FIELDS.map((field) => (
+            <label key={field} className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.artFields.includes(field)}
+                onChange={() => toggleArtField(field)}
+                className="rounded border-gray-300"
+              />
+              {field}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">सदस्यता प्रकार</label>
+          <select value={form.membershipType} onChange={set('membershipType')} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            {MEMBERSHIP_TYPES.map((t) => <option key={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">सामेल मिति</label>
+          <input type="date" value={form.joinDate} onChange={set('joinDate')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">भुक्तानी स्थिति</label>
+          <select value={form.paymentStatus} onChange={set('paymentStatus')} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            {PAYMENT_STATUSES.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">भुक्तानी म्याद सकिने मिति</label>
+          <input type="date" value={form.paymentExpiryDate} onChange={set('paymentExpiryDate')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">मासिक शुल्क (रु.)</label>
+          <input type="number" min="0" value={form.monthlyFee} onChange={set('monthlyFee')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">कैफियत</label>
+        <textarea value={form.notes} onChange={set('notes')} rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2">
+        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">
+          रद्द गर्नुहोस्
+        </button>
+        <button type="submit" className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90">
+          सुरक्षित गर्नुहोस्
+        </button>
+      </div>
+    </form>
+  )
+}
