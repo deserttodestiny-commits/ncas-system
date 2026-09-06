@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useCurrentMember } from '../../data/useCurrentMember'
 import { formatBs } from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
+import Avatar from '../../components/Avatar'
 
 export default function Profile() {
   const { member, updateItem } = useCurrentMember()
@@ -32,6 +33,13 @@ export default function Profile() {
       <h1 className="text-2xl font-bold text-ncas-dark">प्रोफाइल</h1>
 
       <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="flex items-center gap-4 mb-5">
+          <Avatar src={member.photo} sizePx={72} />
+          <div>
+            <div className="text-lg font-bold text-gray-900">{member.fullName}</div>
+            <div className="text-sm font-mono text-ncas-blue">{member.membershipId}</div>
+          </div>
+        </div>
         <h2 className="font-semibold text-ncas-dark mb-4">सदस्य विवरण</h2>
         <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <Detail label="सदस्य आइडी" value={member.membershipId} />

@@ -64,8 +64,8 @@ export default function Payment() {
         <div>
           <div className="text-sm text-gray-500">म्याद (आषाढ़ मसान्त)</div>
           <div className="text-base font-bold text-ncas-dark mt-1">{expiryIso ? formatBs(expiryIso) : '-'}</div>
-          <div className={`text-xs mt-0.5 ${days < 0 ? 'text-ncas-danger' : days <= 30 ? 'text-ncas-warning' : 'text-ncas-success'}`}>
-            {days < 0 ? `${Math.abs(days)} दिन नाघेको` : `${days} दिन बाँकी`}
+          <div className={`text-xs mt-0.5 ${!expiryIso ? 'text-gray-400' : days < 0 ? 'text-ncas-danger' : days <= 30 ? 'text-ncas-warning' : 'text-ncas-success'}`}>
+            {!expiryIso ? 'भुक्तानी विवरण छैन' : days < 0 ? `${Math.abs(days)} दिन नाघेको` : `${days} दिन बाँकी`}
           </div>
         </div>
       </div>

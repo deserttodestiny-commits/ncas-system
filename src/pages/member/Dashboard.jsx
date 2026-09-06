@@ -5,6 +5,7 @@ import {
   getCurrentFiscalYear, getMemberExpiryAdIso, getMemberPaymentStatus,
 } from '../../data/bsCalendar'
 import StatusBadge from '../../components/StatusBadge'
+import Avatar from '../../components/Avatar'
 
 const LINKS = [
   { to: '/member/profile', label: 'प्रोफाइल', icon: '👤' },
@@ -25,10 +26,13 @@ export default function MemberDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-ncas-dark to-ncas-blue text-white rounded-xl shadow-sm p-6">
-        <h1 className="text-2xl font-bold">नमस्ते, {member.fullName} जी!</h1>
-        <p className="text-blue-100 mt-1">{member.district} · {member.membershipType}</p>
-        <p className="text-blue-100 mt-1 text-sm">चालु आर्थिक वर्ष: {fiscalYearLabel(currentFy)}</p>
+      <div className="bg-gradient-to-r from-ncas-dark to-ncas-blue text-white rounded-xl shadow-sm p-6 flex items-center gap-4">
+        <Avatar src={member.photo} sizePx={64} borderClass="border-4 border-white/70" />
+        <div>
+          <h1 className="text-2xl font-bold">नमस्ते, {member.fullName} जी!</h1>
+          <p className="text-blue-100 mt-1">{member.district} · {member.membershipType}</p>
+          <p className="text-blue-100 mt-1 text-sm">चालु आर्थिक वर्ष: {fiscalYearLabel(currentFy)}</p>
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -49,8 +53,8 @@ export default function MemberDashboard() {
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="text-sm text-gray-500">बाँकी दिन</div>
-          <div className={`text-lg font-bold mt-1 ${days < 0 ? 'text-ncas-danger' : days <= 30 ? 'text-ncas-warning' : 'text-ncas-success'}`}>
-            {days < 0 ? `${Math.abs(days)} दिन नाघेको` : `${days} दिन`}
+          <div className={`text-lg font-bold mt-1 ${!expiryIso ? 'text-gray-400' : days < 0 ? 'text-ncas-danger' : days <= 30 ? 'text-ncas-warning' : 'text-ncas-success'}`}>
+            {!expiryIso ? 'भुक्तानी विवरण छैन' : days < 0 ? `${Math.abs(days)} दिन नाघेको` : `${days} दिन`}
           </div>
         </div>
       </div>

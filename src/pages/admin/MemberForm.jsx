@@ -3,19 +3,23 @@ import {
   ART_FIELDS, DISTRICTS, EMPLOYMENT_STATUSES, MEMBERSHIP_TYPES,
 } from '../../data/districts'
 import { fiscalYearLabel, fiscalYearFromEndYear, getCurrentFiscalYear, getMemberExpiryAdIso } from '../../data/bsCalendar'
+import { fileToResizedDataUrl } from '../../data/image'
 import BsDateInput from '../../components/BsDateInput'
 import FiscalYearSelect from '../../components/FiscalYearSelect'
+import Avatar from '../../components/Avatar'
+import { useUi } from '../../context/UiContext'
 
 const emptyForm = {
   fullName: '', gender: 'पुरुष', dob: '', citizenshipNo: '', phone: '', email: '',
   district: DISTRICTS[0], municipality: '', wardNo: '', artFields: [], experienceYears: '',
   employmentStatus: EMPLOYMENT_STATUSES[0], organizationName: '', membershipType: MEMBERSHIP_TYPES[0],
   joinDate: new Date().toISOString().slice(0, 10),
-  paidThroughFiscalYear: '', monthlyFee: 100, notes: '',
+  paidThroughFiscalYear: '', monthlyFee: 100, notes: '', photo: '',
 }
 
 export default function MemberForm({ initial, onCancel, onSubmit }) {
   const [form, setForm] = useState(() => (initial ? { ...emptyForm, ...initial } : emptyForm))
+  const { toast } = useUi()
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
   const setDate = (key) => (iso) => setForm((f) => ({ ...f, [key]: iso }))
@@ -25,6 +29,21 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
       ...f,
       artFields: f.artFields.includes(field) ? f.artFields.filter((x) => x !== field) : [...f.artFields, field],
     }))
+  }
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast('कृपया मान्य तस्बिर फाइल छान्नुहोस्', 'error')
+      return
+    }
+    try {
+      const dataUrl = await fileToResizedDataUrl(file)
+      setForm((f) => ({ ...f, photo: dataUrl }))
+    } catch {
+      toast('तस्बिर लोड गर्न सकिएन', 'error')
+    }
   }
 
   const handleSubmit = (e) => {
@@ -37,6 +56,19 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex items-center gap-4">
+        <Avatar src={form.photo} sizePx={72} />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">सदस्यको फोटो</label>
+          <input type="file" accept="image/*" onChange={handlePhoto} className="text-sm" />
+          {form.photo && (
+            <button type="button" onClick={() => setForm((f) => ({ ...f, photo: '' }))} className="block text-xs text-ncas-danger hover:underline mt-1">
+              फोटो हटाउनुहोस्
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">पूरा नाम *</label>

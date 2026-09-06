@@ -1,5 +1,6 @@
 import { useCurrentMember } from '../../data/useCurrentMember'
 import { fiscalYearFromEndYear, fiscalYearLabel, formatBs, getMemberExpiryAdIso } from '../../data/bsCalendar'
+import Avatar from '../../components/Avatar'
 
 export default function IdCard() {
   const { member } = useCurrentMember()
@@ -19,9 +20,7 @@ export default function IdCard() {
         </div>
 
         <div className="p-5 flex flex-col items-center text-center">
-          <div className="w-24 h-24 rounded-full bg-gray-200 border-4 border-ncas-gold flex items-center justify-center text-3xl text-gray-400 mb-3">
-            👤
-          </div>
+          <Avatar src={member.photo} sizePx={96} className="mb-3" />
           <div className="text-lg font-bold text-gray-900">{member.fullName}</div>
           <div className="text-sm font-mono text-ncas-blue mt-1">{member.membershipId}</div>
 

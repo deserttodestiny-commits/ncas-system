@@ -10,6 +10,7 @@ import { useUi } from '../../context/UiContext'
 import Modal from '../../components/Modal'
 import EmptyState from '../../components/EmptyState'
 import StatusBadge from '../../components/StatusBadge'
+import Avatar from '../../components/Avatar'
 import MemberForm from './MemberForm'
 
 function toCsvValue(v) {
@@ -160,7 +161,12 @@ export default function Members() {
                 {filtered.map((m) => (
                   <tr key={m.id} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">{m.membershipId}</td>
-                    <td className="px-4 py-3 font-medium text-gray-800">{m.fullName}</td>
+                    <td className="px-4 py-3 font-medium text-gray-800">
+                      <div className="flex items-center gap-2">
+                        <Avatar src={m.photo} sizePx={28} borderClass="border border-gray-200" />
+                        {m.fullName}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{m.phone}</td>
                     <td className="px-4 py-3 text-gray-600">{m.district}</td>
                     <td className="px-4 py-3 text-gray-600">{m.membershipType}</td>
@@ -192,6 +198,13 @@ export default function Members() {
       <Modal open={modalMode === 'view'} onClose={closeModal} title="सदस्य विवरण" wide>
         {activeMember && (
           <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <div className="sm:col-span-2 flex items-center gap-4 pb-2">
+              <Avatar src={activeMember.photo} sizePx={72} />
+              <div>
+                <div className="text-lg font-bold text-gray-900">{activeMember.fullName}</div>
+                <div className="text-sm font-mono text-ncas-blue">{activeMember.membershipId}</div>
+              </div>
+            </div>
             <Detail label="सदस्य आइडी" value={activeMember.membershipId} />
             <Detail label="पूरा नाम" value={activeMember.fullName} />
             <Detail label="लिङ्ग" value={activeMember.gender} />
