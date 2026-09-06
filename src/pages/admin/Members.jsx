@@ -57,7 +57,17 @@ export default function Members() {
       addItem({ id: uid(), membershipId, ...form })
       toast('नयाँ सदस्य थपियो')
     } else if (modalMode === 'edit') {
-      updateItem(activeMember.id, form)
+      const newId = form.membershipId?.trim()
+      if (!newId) {
+        toast('सदस्यता आइडी खाली हुन सक्दैन', 'error')
+        return
+      }
+      const duplicate = members.some((m) => m.id !== activeMember.id && m.membershipId === newId)
+      if (duplicate) {
+        toast('यो सदस्यता आइडी पहिले नै अर्को सदस्यसँग छ', 'error')
+        return
+      }
+      updateItem(activeMember.id, { ...form, membershipId: newId })
       toast('सदस्य विवरण अद्यावधिक भयो')
     }
     closeModal()

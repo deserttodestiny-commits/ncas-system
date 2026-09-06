@@ -69,6 +69,19 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
         </div>
       </div>
 
+      {initial && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">सदस्यता आइडी *</label>
+          <input
+            required
+            value={form.membershipId}
+            onChange={set('membershipId')}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono"
+          />
+          <p className="text-xs text-gray-400 mt-1">सावधानी: यो सदस्यको लगइन आइडी हो — परिवर्तन गर्दा सदस्यलाई नयाँ आइडी जानकारी दिनुहोस्।</p>
+        </div>
+      )}
+
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">पूरा नाम *</label>
