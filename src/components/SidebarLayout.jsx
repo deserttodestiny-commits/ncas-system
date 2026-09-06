@@ -25,9 +25,12 @@ export default function SidebarLayout({ title, subtitle, navItems, children }) {
         className={`fixed lg:static z-40 top-0 left-0 h-full w-64 bg-ncas-dark text-white flex flex-col transition-transform duration-200
         ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 no-print`}
       >
-        <div className="px-5 py-5 border-b border-white/10">
-          <div className="text-lg font-bold leading-tight">{title}</div>
-          <div className="text-xs text-blue-200 mt-1">{subtitle}</div>
+        <div className="px-5 py-5 border-b border-white/10 flex items-center gap-3">
+          <img src="/ncas-logo.jpg" alt="NCAS" className="w-10 h-10 rounded-full bg-white p-0.5 shrink-0" />
+          <div>
+            <div className="text-lg font-bold leading-tight">{title}</div>
+            <div className="text-xs text-blue-200 mt-1">{subtitle}</div>
+          </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-3">
           {navItems.map((item) => (

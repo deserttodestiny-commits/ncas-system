@@ -10,9 +10,12 @@ export default function IdCard() {
       <h1 className="text-2xl font-bold text-ncas-dark no-print">परिचयपत्र</h1>
 
       <div className="rounded-2xl shadow-lg overflow-hidden border border-gray-200 bg-white">
-        <div className="bg-ncas-dark text-white px-5 py-4 text-center">
-          <div className="text-xs tracking-wide text-blue-200">नेपाल कमर्शियल आर्टिष्ट संघ</div>
-          <div className="font-bold text-lg">NCAS</div>
+        <div className="bg-ncas-dark text-white px-5 py-4 flex items-center gap-3 justify-center">
+          <img src="/ncas-logo.jpg" alt="NCAS" className="w-10 h-10 rounded-full bg-white p-0.5 shrink-0" />
+          <div className="text-center">
+            <div className="text-xs tracking-wide text-blue-200">नेपाल कमर्शियल आर्टिष्ट संघ</div>
+            <div className="font-bold text-lg">NCAS</div>
+          </div>
         </div>
 
         <div className="p-5 flex flex-col items-center text-center">

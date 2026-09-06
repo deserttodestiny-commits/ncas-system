@@ -44,9 +44,7 @@ export default function Landing() {
     <div className="min-h-screen bg-ncas-light flex flex-col">
       <header className="bg-ncas-dark text-white">
         <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-full bg-ncas-gold flex items-center justify-center text-2xl font-bold mb-3">
-            NCAS
-          </div>
+          <img src="/ncas-logo.jpg" alt="NCAS" className="w-20 h-20 rounded-full bg-white p-1 shadow-md mb-3" />
           <h1 className="text-2xl md:text-3xl font-bold">नेपाल कमर्शियल आर्टिष्ट संघ (NCAS)</h1>
           <p className="text-blue-200 mt-2 text-sm md:text-base">"कलाकारिता नै राष्ट्रको मूल सभ्यता"</p>
         </div>
