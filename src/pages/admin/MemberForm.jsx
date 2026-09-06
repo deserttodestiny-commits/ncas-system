@@ -2,8 +2,9 @@ import { useState } from 'react'
 import {
   ART_FIELDS, DISTRICTS, EMPLOYMENT_STATUSES, MEMBERSHIP_TYPES,
 } from '../../data/districts'
-import { fiscalYearLabel, fiscalYearFromEndYear, getCurrentFiscalYear, getMemberExpiryAdIso } from '../../data/bsCalendar'
+import { adToBs, fiscalYearLabel, fiscalYearFromEndYear, getCurrentFiscalYear, getMemberExpiryAdIso } from '../../data/bsCalendar'
 import { fileToResizedDataUrl } from '../../data/image'
+import { formatMembershipId, parseMembershipId } from '../../data/storage'
 import BsDateInput from '../../components/BsDateInput'
 import FiscalYearSelect from '../../components/FiscalYearSelect'
 import Avatar from '../../components/Avatar'
@@ -19,6 +20,7 @@ const emptyForm = {
 
 export default function MemberForm({ initial, onCancel, onSubmit }) {
   const [form, setForm] = useState(() => (initial ? { ...emptyForm, ...initial } : emptyForm))
+  const [membershipSeq, setMembershipSeq] = useState(() => parseMembershipId(initial?.membershipId)?.seq ?? '')
   const { toast } = useUi()
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -46,9 +48,24 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
     }
   }
 
+  const joinYearBs = adToBs(form.joinDate)?.year
+
   const handleSubmit = (e) => {
     e.preventDefault()
-    onSubmit(form)
+    if (initial) {
+      const seq = Number(membershipSeq)
+      if (!membershipSeq || !Number.isInteger(seq) || seq < 1 || seq > 99999) {
+        toast('सदस्यता क्रम संख्या १ देखि ९९९९९ सम्मको मान्य अंक हुनुपर्छ', 'error')
+        return
+      }
+      if (!joinYearBs) {
+        toast('सामेल मिति मान्य छैन', 'error')
+        return
+      }
+      onSubmit({ ...form, membershipId: formatMembershipId(joinYearBs, seq) })
+    } else {
+      onSubmit(form)
+    }
   }
 
   const currentFy = getCurrentFiscalYear()
@@ -72,13 +89,25 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
       {initial && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">सदस्यता आइडी *</label>
-          <input
-            required
-            value={form.membershipId}
-            onChange={set('membershipId')}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono"
-          />
-          <p className="text-xs text-gray-400 mt-1">सावधानी: यो सदस्यको लगइन आइडी हो — परिवर्तन गर्दा सदस्यलाई नयाँ आइडी जानकारी दिनुहोस्।</p>
+          <div className="flex items-center gap-2">
+            <span className="border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 font-mono text-gray-500 whitespace-nowrap">
+              NCAS-{joinYearBs || '----'}-
+            </span>
+            <input
+              required
+              type="number"
+              min="1"
+              max="99999"
+              value={membershipSeq}
+              onChange={(e) => setMembershipSeq(e.target.value)}
+              placeholder="00007"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono"
+            />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            मानक ढाँचा: NCAS-सामेल भएको वि.सं. वर्ष-५ अंकको क्रम संख्या (जस्तै NCAS-{joinYearBs || '2083'}-00007)। वर्ष स्वतः "सामेल मिति" बाट लिइन्छ।
+            सावधानी: यो सदस्यको लगइन आइडी पनि हो — परिवर्तन गर्दा सदस्यलाई नयाँ आइडी जानकारी दिनुहोस्।
+          </p>
         </div>
       )}
 

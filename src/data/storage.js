@@ -23,14 +23,21 @@ export function save(key, value) {
 
 export { KEYS }
 
+// Standard membership ID: NCAS-<BS year joined>-<5-digit sequence>, e.g. NCAS-2083-00007
+export function formatMembershipId(bsYear, seq) {
+  return `NCAS-${bsYear}-${String(seq).padStart(5, '0')}`
+}
+
+export function parseMembershipId(id) {
+  const m = /^NCAS-(\d{4})-(\d+)$/.exec(id || '')
+  if (!m) return null
+  return { year: Number(m[1]), seq: Number(m[2]) }
+}
+
 export function nextMembershipId(members, bsYear) {
-  const nums = members
-    .map((m) => m.membershipId)
-    .filter((id) => id && /^NCAS-\d+-\d+$/.test(id))
-    .map((id) => parseInt(id.split('-')[2], 10))
-    .filter((n) => !isNaN(n))
+  const nums = members.map((m) => parseMembershipId(m.membershipId)?.seq).filter((n) => !isNaN(n) && n != null)
   const next = (nums.length ? Math.max(...nums) : 0) + 1
-  return `NCAS-${bsYear}-${String(next).padStart(4, '0')}`
+  return formatMembershipId(bsYear, next)
 }
 
 export function uid() {
