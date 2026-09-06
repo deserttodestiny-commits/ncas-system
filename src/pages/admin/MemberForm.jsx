@@ -1,20 +1,24 @@
 import { useState } from 'react'
 import {
-  ART_FIELDS, DISTRICTS, EMPLOYMENT_STATUSES, MEMBERSHIP_TYPES, PAYMENT_STATUSES,
+  ART_FIELDS, DISTRICTS, EMPLOYMENT_STATUSES, MEMBERSHIP_TYPES,
 } from '../../data/districts'
+import { fiscalYearLabel, fiscalYearFromEndYear, getCurrentFiscalYear, getMemberExpiryAdIso } from '../../data/bsCalendar'
+import BsDateInput from '../../components/BsDateInput'
+import FiscalYearSelect from '../../components/FiscalYearSelect'
 
 const emptyForm = {
   fullName: '', gender: 'पुरुष', dob: '', citizenshipNo: '', phone: '', email: '',
   district: DISTRICTS[0], municipality: '', wardNo: '', artFields: [], experienceYears: '',
   employmentStatus: EMPLOYMENT_STATUSES[0], organizationName: '', membershipType: MEMBERSHIP_TYPES[0],
-  joinDate: new Date().toISOString().slice(0, 10), paymentStatus: 'Pending',
-  paymentExpiryDate: '', monthlyFee: 100, notes: '',
+  joinDate: new Date().toISOString().slice(0, 10),
+  paidThroughFiscalYear: '', monthlyFee: 100, notes: '',
 }
 
 export default function MemberForm({ initial, onCancel, onSubmit }) {
   const [form, setForm] = useState(() => (initial ? { ...emptyForm, ...initial } : emptyForm))
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const setDate = (key) => (iso) => setForm((f) => ({ ...f, [key]: iso }))
 
   const toggleArtField = (field) => {
     setForm((f) => ({
@@ -27,6 +31,9 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
     e.preventDefault()
     onSubmit(form)
   }
+
+  const currentFy = getCurrentFiscalYear()
+  const expiryPreview = form.paidThroughFiscalYear ? getMemberExpiryAdIso(Number(form.paidThroughFiscalYear)) : ''
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -44,8 +51,8 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">जन्म मिति</label>
-          <input type="date" value={form.dob} onChange={set('dob')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">जन्म मिति (वि.सं.)</label>
+          <BsDateInput value={form.dob} onChange={setDate('dob')} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">नागरिकता नं.</label>
@@ -114,22 +121,26 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">सामेल मिति</label>
-          <input type="date" value={form.joinDate} onChange={set('joinDate')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">भुक्तानी स्थिति</label>
-          <select value={form.paymentStatus} onChange={set('paymentStatus')} className="w-full border border-gray-300 rounded-lg px-3 py-2">
-            {PAYMENT_STATUSES.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">भुक्तानी म्याद सकिने मिति</label>
-          <input type="date" value={form.paymentExpiryDate} onChange={set('paymentExpiryDate')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">सामेल मिति (वि.सं.)</label>
+          <BsDateInput value={form.joinDate} onChange={setDate('joinDate')} required />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">मासिक शुल्क (रु.)</label>
           <input type="number" min="0" value={form.monthlyFee} onChange={set('monthlyFee')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            सदस्यता तिरेको आ.व. (अन्तिम) — चालु आ.व. {fiscalYearLabel(currentFy)}
+          </label>
+          <FiscalYearSelect
+            value={form.paidThroughFiscalYear}
+            onChange={(endYear) => setForm((f) => ({ ...f, paidThroughFiscalYear: endYear }))}
+          />
+          {form.paidThroughFiscalYear && (
+            <p className="text-xs text-gray-400 mt-1">
+              म्याद: आ.व. {fiscalYearLabel(fiscalYearFromEndYear(Number(form.paidThroughFiscalYear)))} को आषाढ़ मसान्तसम्म (AD: {expiryPreview})
+            </p>
+          )}
         </div>
       </div>
 

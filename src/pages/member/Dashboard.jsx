@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useCurrentMember } from '../../data/useCurrentMember'
-import { daysUntil } from '../../data/storage'
+import {
+  daysUntilIso, fiscalYearFromEndYear, fiscalYearLabel, formatBs,
+  getCurrentFiscalYear, getMemberExpiryAdIso, getMemberPaymentStatus,
+} from '../../data/bsCalendar'
 import StatusBadge from '../../components/StatusBadge'
 
 const LINKS = [
@@ -15,13 +18,17 @@ export default function MemberDashboard() {
   const { member } = useCurrentMember()
   if (!member) return null
 
-  const days = daysUntil(member.paymentExpiryDate)
+  const currentFy = getCurrentFiscalYear()
+  const status = getMemberPaymentStatus(member.paidThroughFiscalYear)
+  const expiryIso = getMemberExpiryAdIso(member.paidThroughFiscalYear)
+  const days = daysUntilIso(expiryIso)
 
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-ncas-dark to-ncas-blue text-white rounded-xl shadow-sm p-6">
         <h1 className="text-2xl font-bold">नमस्ते, {member.fullName} जी!</h1>
         <p className="text-blue-100 mt-1">{member.district} · {member.membershipType}</p>
+        <p className="text-blue-100 mt-1 text-sm">चालु आर्थिक वर्ष: {fiscalYearLabel(currentFy)}</p>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -31,11 +38,14 @@ export default function MemberDashboard() {
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="text-sm text-gray-500 mb-2">भुक्तानी स्थिति</div>
-          <StatusBadge status={member.paymentStatus} />
+          <StatusBadge status={status} />
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <div className="text-sm text-gray-500">म्याद सकिने मिति</div>
-          <div className="text-lg font-bold text-ncas-dark mt-1">{member.paymentExpiryDate}</div>
+          <div className="text-sm text-gray-500">तिरेको आ.व. (अन्तिम)</div>
+          <div className="text-lg font-bold text-ncas-dark mt-1">
+            {member.paidThroughFiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(member.paidThroughFiscalYear)) : '-'}
+          </div>
+          <div className="text-xs text-gray-400 mt-0.5">आषाढ़ मसान्त: {expiryIso ? formatBs(expiryIso) : '-'}</div>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="text-sm text-gray-500">बाँकी दिन</div>

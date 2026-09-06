@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react'
 import { useCollection } from '../../data/useCollection'
 import { ART_FIELDS, DISTRICTS, MEMBERSHIP_TYPES, PAYMENT_STATUSES } from '../../data/districts'
 import { nextMembershipId, uid } from '../../data/storage'
+import {
+  fiscalYearFromEndYear, fiscalYearLabel, formatBs,
+  getMemberExpiryAdIso, getMemberPaymentStatus, getTodayBs,
+} from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
 import Modal from '../../components/Modal'
 import EmptyState from '../../components/EmptyState'
@@ -34,7 +38,7 @@ export default function Members() {
     return members.filter((m) => {
       if (q && !(m.fullName.toLowerCase().includes(q) || m.phone.includes(q) || m.district.toLowerCase().includes(q))) return false
       if (districtFilter && m.district !== districtFilter) return false
-      if (paymentFilter && m.paymentStatus !== paymentFilter) return false
+      if (paymentFilter && getMemberPaymentStatus(m.paidThroughFiscalYear) !== paymentFilter) return false
       if (typeFilter && m.membershipType !== typeFilter) return false
       if (artFilter && !m.artFields.includes(artFilter)) return false
       return true
@@ -48,7 +52,7 @@ export default function Members() {
 
   const handleSubmit = (form) => {
     if (modalMode === 'add') {
-      const membershipId = nextMembershipId(members)
+      const membershipId = nextMembershipId(members, getTodayBs().year)
       addItem({ id: uid(), membershipId, ...form })
       toast('नयाँ सदस्य थपियो')
     } else if (modalMode === 'edit') {
@@ -70,9 +74,17 @@ export default function Members() {
     const headers = [
       'membershipId', 'fullName', 'gender', 'dob', 'citizenshipNo', 'phone', 'email', 'district',
       'municipality', 'wardNo', 'artFields', 'experienceYears', 'employmentStatus', 'organizationName',
-      'membershipType', 'joinDate', 'paymentStatus', 'paymentExpiryDate', 'monthlyFee', 'notes',
+      'membershipType', 'joinDate', 'paymentStatus', 'paidThroughFiscalYearLabel', 'paymentExpiryDate', 'monthlyFee', 'notes',
     ]
-    const rows = filtered.map((m) => headers.map((h) => toCsvValue(m[h])).join(','))
+    const rows = filtered.map((m) => {
+      const row = {
+        ...m,
+        paymentStatus: getMemberPaymentStatus(m.paidThroughFiscalYear),
+        paidThroughFiscalYearLabel: m.paidThroughFiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(m.paidThroughFiscalYear)) : '',
+        paymentExpiryDate: getMemberExpiryAdIso(m.paidThroughFiscalYear),
+      }
+      return headers.map((h) => toCsvValue(row[h])).join(',')
+    })
     const csv = [headers.join(','), ...rows].join('\n')
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -139,6 +151,7 @@ export default function Members() {
                   <th className="px-4 py-3">फोन</th>
                   <th className="px-4 py-3">जिल्ला</th>
                   <th className="px-4 py-3">प्रकार</th>
+                  <th className="px-4 py-3">तिरेको आ.व.</th>
                   <th className="px-4 py-3">स्थिति</th>
                   <th className="px-4 py-3 text-right">कार्य</th>
                 </tr>
@@ -151,7 +164,10 @@ export default function Members() {
                     <td className="px-4 py-3 text-gray-600">{m.phone}</td>
                     <td className="px-4 py-3 text-gray-600">{m.district}</td>
                     <td className="px-4 py-3 text-gray-600">{m.membershipType}</td>
-                    <td className="px-4 py-3"><StatusBadge status={m.paymentStatus} /></td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {m.paidThroughFiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(m.paidThroughFiscalYear)) : '-'}
+                    </td>
+                    <td className="px-4 py-3"><StatusBadge status={getMemberPaymentStatus(m.paidThroughFiscalYear)} /></td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <button onClick={() => openView(m)} className="text-ncas-blue hover:underline text-xs font-medium">हेर्नुहोस्</button>
@@ -179,7 +195,7 @@ export default function Members() {
             <Detail label="सदस्य आइडी" value={activeMember.membershipId} />
             <Detail label="पूरा नाम" value={activeMember.fullName} />
             <Detail label="लिङ्ग" value={activeMember.gender} />
-            <Detail label="जन्म मिति" value={activeMember.dob} />
+            <Detail label="जन्म मिति (वि.सं.)" value={formatBs(activeMember.dob) || '-'} />
             <Detail label="नागरिकता नं." value={activeMember.citizenshipNo} />
             <Detail label="फोन" value={activeMember.phone} />
             <Detail label="इमेल" value={activeMember.email} />
@@ -191,9 +207,16 @@ export default function Members() {
             <Detail label="रोजगारी स्थिति" value={activeMember.employmentStatus} />
             <Detail label="संस्था" value={activeMember.organizationName || '-'} />
             <Detail label="सदस्यता प्रकार" value={activeMember.membershipType} />
-            <Detail label="सामेल मिति" value={activeMember.joinDate} />
-            <Detail label="भुक्तानी स्थिति" value={<StatusBadge status={activeMember.paymentStatus} />} />
-            <Detail label="म्याद सकिने मिति" value={activeMember.paymentExpiryDate} />
+            <Detail label="सामेल मिति (वि.सं.)" value={formatBs(activeMember.joinDate)} />
+            <Detail label="भुक्तानी स्थिति" value={<StatusBadge status={getMemberPaymentStatus(activeMember.paidThroughFiscalYear)} />} />
+            <Detail
+              label="तिरेको आ.व. / म्याद"
+              value={
+                activeMember.paidThroughFiscalYear
+                  ? `${fiscalYearLabel(fiscalYearFromEndYear(activeMember.paidThroughFiscalYear))} (आषाढ़ मसान्त: ${formatBs(getMemberExpiryAdIso(activeMember.paidThroughFiscalYear))})`
+                  : '-'
+              }
+            />
             <Detail label="मासिक शुल्क" value={`रु. ${activeMember.monthlyFee}`} />
             {activeMember.notes && <Detail label="कैफियत" value={activeMember.notes} full />}
           </div>

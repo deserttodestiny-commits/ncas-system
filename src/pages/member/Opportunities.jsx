@@ -1,4 +1,5 @@
 import { useCollection } from '../../data/useCollection'
+import { formatBs } from '../../data/bsCalendar'
 import EmptyState from '../../components/EmptyState'
 
 export default function Opportunities() {
@@ -15,7 +16,7 @@ export default function Opportunities() {
                 <div className="font-medium text-gray-800">{o.title}</div>
                 <div className="text-sm text-gray-600 mt-0.5">{o.description}</div>
                 <div className="text-xs text-gray-400 mt-1">
-                  📍 {o.location} · ⏰ अन्तिम मिति: {o.deadline || '-'} · 📞 {o.contact}
+                  📍 {o.location} · ⏰ अन्तिम मिति: {o.deadline ? formatBs(o.deadline) : '-'} · 📞 {o.contact}
                 </div>
               </li>
             ))}

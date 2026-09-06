@@ -4,6 +4,7 @@ import {
 import { useCollection } from '../../data/useCollection'
 import { districtStats, monthlyIncomeExpense } from '../../data/helpers'
 import { formatNPR } from '../../data/storage'
+import { fiscalYearLabel, formatBs, getCurrentFiscalYear, getMemberPaymentStatus } from '../../data/bsCalendar'
 import StatusBadge from '../../components/StatusBadge'
 import EmptyState from '../../components/EmptyState'
 
@@ -48,9 +49,16 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 5)
 
+  const currentFy = getCurrentFiscalYear()
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-ncas-dark">ड्यासबोर्ड</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold text-ncas-dark">ड्यासबोर्ड</h1>
+        <span className="px-3 py-1 rounded-full bg-ncas-light text-ncas-dark text-sm font-semibold border border-ncas-blue/30">
+          चालु आर्थिक वर्ष: {fiscalYearLabel(currentFy)}
+        </span>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard label="कुल सदस्य" value={members.length} icon="👥" accent="#1F3864" />
@@ -61,7 +69,7 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <h2 className="font-semibold text-ncas-dark mb-4">मासिक आम्दानी बनाम खर्च (गत ६ महिना)</h2>
+          <h2 className="font-semibold text-ncas-dark mb-4">मासिक आम्दानी बनाम खर्च (गत ६ महिना, वि.सं.)</h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -112,7 +120,7 @@ export default function Dashboard() {
                     <tr key={m.id} className="border-b last:border-0">
                       <td className="py-2 font-medium text-gray-800">{m.fullName}</td>
                       <td className="py-2 text-gray-600">{m.district}</td>
-                      <td className="py-2"><StatusBadge status={m.paymentStatus} /></td>
+                      <td className="py-2"><StatusBadge status={getMemberPaymentStatus(m.paidThroughFiscalYear)} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -130,7 +138,7 @@ export default function Dashboard() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 border-b">
-                    <th className="pb-2">मिति</th>
+                    <th className="pb-2">मिति (वि.सं.)</th>
                     <th className="pb-2">प्रकार</th>
                     <th className="pb-2">विवरण</th>
                     <th className="pb-2 text-right">रकम</th>
@@ -139,7 +147,7 @@ export default function Dashboard() {
                 <tbody>
                   {recentTransactions.map((t) => (
                     <tr key={t.type + t.id} className="border-b last:border-0">
-                      <td className="py-2 text-gray-600">{t.date}</td>
+                      <td className="py-2 text-gray-600 whitespace-nowrap">{formatBs(t.date)}</td>
                       <td className="py-2">
                         <span className={t.type === 'आम्दानी' ? 'text-ncas-success font-medium' : 'text-ncas-danger font-medium'}>{t.type}</span>
                       </td>

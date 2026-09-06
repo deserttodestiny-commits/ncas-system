@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useCollection } from '../../data/useCollection'
 import { DISTRICTS } from '../../data/districts'
 import { uid } from '../../data/storage'
+import { formatBs } from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
+import BsDateInput from '../../components/BsDateInput'
 import EmptyState from '../../components/EmptyState'
 
 const emptyForm = { title: '', message: '', target: 'All' }
@@ -88,7 +90,7 @@ export default function Notifications() {
                 <div>
                   <div className="font-medium text-gray-800">{n.title}</div>
                   <div className="text-sm text-gray-600 mt-0.5">{n.message}</div>
-                  <div className="text-xs text-gray-400 mt-1">{n.date} · {n.target === 'All' ? 'सबै सदस्य' : n.target}</div>
+                  <div className="text-xs text-gray-400 mt-1">{formatBs(n.date)} · {n.target === 'All' ? 'सबै सदस्य' : n.target}</div>
                 </div>
                 <button onClick={() => handleDelete(n)} className="text-ncas-danger hover:underline text-xs font-medium shrink-0">हटाउनुहोस्</button>
               </li>
@@ -116,8 +118,8 @@ export default function Notifications() {
             <input value={oppForm.location} onChange={setOpp('location')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">अन्तिम मिति</label>
-            <input type="date" value={oppForm.deadline} onChange={setOpp('deadline')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">अन्तिम मिति (वि.सं.)</label>
+            <BsDateInput value={oppForm.deadline} onChange={(iso) => setOppForm((f) => ({ ...f, deadline: iso }))} />
           </div>
         </div>
         <div>
@@ -140,7 +142,7 @@ export default function Notifications() {
                 <div>
                   <div className="font-medium text-gray-800">{o.title}</div>
                   <div className="text-sm text-gray-600 mt-0.5">{o.description}</div>
-                  <div className="text-xs text-gray-400 mt-1">{o.location} · अन्तिम मिति: {o.deadline || '-'} · सम्पर्क: {o.contact}</div>
+                  <div className="text-xs text-gray-400 mt-1">{o.location} · अन्तिम मिति: {o.deadline ? formatBs(o.deadline) : '-'} · सम्पर्क: {o.contact}</div>
                 </div>
                 <button onClick={() => handleOppDelete(o)} className="text-ncas-danger hover:underline text-xs font-medium shrink-0">हटाउनुहोस्</button>
               </li>

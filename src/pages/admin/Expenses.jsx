@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useCollection } from '../../data/useCollection'
 import { EXPENSE_CATEGORIES } from '../../data/districts'
 import { formatNPR, uid } from '../../data/storage'
+import { bsMonthKeyForAdDate, formatBs } from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
+import BsDateInput from '../../components/BsDateInput'
 import Modal from '../../components/Modal'
 import EmptyState from '../../components/EmptyState'
 
@@ -21,7 +23,7 @@ export default function Expenses() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    addItem({ id: uid(), ...form, amount: Number(form.amount) || 0 })
+    addItem({ id: uid(), ...form, amount: Number(form.amount) || 0, bsKey: bsMonthKeyForAdDate(form.date) })
     toast('खर्च थपियो')
     setForm(emptyForm)
     setOpen(false)
@@ -55,7 +57,7 @@ export default function Expenses() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500">
                 <tr className="text-left">
-                  <th className="px-4 py-3">मिति</th>
+                  <th className="px-4 py-3">मिति (वि.सं.)</th>
                   <th className="px-4 py-3">श्रेणी</th>
                   <th className="px-4 py-3">विवरण</th>
                   <th className="px-4 py-3">भुक्तानी गरिएको</th>
@@ -66,7 +68,7 @@ export default function Expenses() {
               <tbody>
                 {sorted.map((e) => (
                   <tr key={e.id} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-600">{e.date}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatBs(e.date)}</td>
                     <td className="px-4 py-3 text-gray-700">{e.category}</td>
                     <td className="px-4 py-3 text-gray-700">{e.description}</td>
                     <td className="px-4 py-3 text-gray-600">{e.paidTo}</td>
@@ -87,8 +89,8 @@ export default function Expenses() {
       <Modal open={open} onClose={() => setOpen(false)} title="नयाँ खर्च थप्नुहोस्">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">मिति</label>
-            <input type="date" required value={form.date} onChange={set('date')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">मिति (वि.सं.)</label>
+            <BsDateInput value={form.date} onChange={(iso) => setForm((f) => ({ ...f, date: iso }))} required />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">श्रेणी</label>

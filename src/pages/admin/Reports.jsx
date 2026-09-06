@@ -3,10 +3,12 @@ import { useCollection } from '../../data/useCollection'
 import { DISTRICTS } from '../../data/districts'
 import { districtStats } from '../../data/helpers'
 import { formatNPR } from '../../data/storage'
+import { fiscalYearLabel, getCurrentFiscalYear } from '../../data/bsCalendar'
 
 export default function Reports() {
   const { items: members } = useCollection('members')
   const statsMap = districtStats(members)
+  const currentFy = getCurrentFiscalYear()
 
   const rows = DISTRICTS.map((d) => statsMap[d] || { district: d, total: 0, paid: 0, pendingOverdue: 0, fees: 0 })
   const topChartData = [...rows]
@@ -17,7 +19,12 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-ncas-dark">जिल्ला अनुसार रिपोर्ट</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold text-ncas-dark">जिल्ला अनुसार रिपोर्ट</h1>
+        <span className="px-3 py-1 rounded-full bg-ncas-light text-ncas-dark text-sm font-semibold border border-ncas-blue/30">
+          चालु आर्थिक वर्ष: {fiscalYearLabel(currentFy)}
+        </span>
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm p-5">
         <h2 className="font-semibold text-ncas-dark mb-4">शीर्ष १५ जिल्ला (सदस्य संख्या अनुसार)</h2>

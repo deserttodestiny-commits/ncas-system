@@ -1,5 +1,6 @@
 import { useCurrentMember } from '../../data/useCurrentMember'
 import { useCollection } from '../../data/useCollection'
+import { formatBs } from '../../data/bsCalendar'
 import EmptyState from '../../components/EmptyState'
 
 export default function MemberNotifications() {
@@ -21,7 +22,7 @@ export default function MemberNotifications() {
               <li key={n.id} className="px-5 py-4">
                 <div className="font-medium text-gray-800">{n.title}</div>
                 <div className="text-sm text-gray-600 mt-0.5">{n.message}</div>
-                <div className="text-xs text-gray-400 mt-1">{n.date}</div>
+                <div className="text-xs text-gray-400 mt-1">{formatBs(n.date)}</div>
               </li>
             ))}
           </ul>

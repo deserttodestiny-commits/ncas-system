@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useCurrentMember } from '../../data/useCurrentMember'
+import { formatBs } from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
 
 export default function Profile() {
@@ -36,14 +37,14 @@ export default function Profile() {
           <Detail label="सदस्य आइडी" value={member.membershipId} />
           <Detail label="पूरा नाम" value={member.fullName} />
           <Detail label="लिङ्ग" value={member.gender} />
-          <Detail label="जन्म मिति" value={member.dob} />
+          <Detail label="जन्म मिति (वि.सं.)" value={formatBs(member.dob) || '-'} />
           <Detail label="नागरिकता नं." value={member.citizenshipNo} />
           <Detail label="जिल्ला" value={member.district} />
           <Detail label="कला क्षेत्र" value={member.artFields?.join(', ')} full />
           <Detail label="अनुभव" value={`${member.experienceYears} वर्ष`} />
           <Detail label="रोजगारी स्थिति" value={member.employmentStatus} />
           <Detail label="सदस्यता प्रकार" value={member.membershipType} />
-          <Detail label="सामेल मिति" value={member.joinDate} />
+          <Detail label="सामेल मिति (वि.सं.)" value={formatBs(member.joinDate)} />
         </div>
       </div>
 

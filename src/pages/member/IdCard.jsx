@@ -1,4 +1,5 @@
 import { useCurrentMember } from '../../data/useCurrentMember'
+import { fiscalYearFromEndYear, fiscalYearLabel, formatBs, getMemberExpiryAdIso } from '../../data/bsCalendar'
 
 export default function IdCard() {
   const { member } = useCurrentMember()
@@ -28,10 +29,14 @@ export default function IdCard() {
             <div className="text-gray-800 font-medium text-right">{member.district}</div>
             <div className="text-gray-400">कला क्षेत्र</div>
             <div className="text-gray-800 font-medium text-right">{member.artFields?.join(', ') || '-'}</div>
-            <div className="text-gray-400">सामेल मिति</div>
-            <div className="text-gray-800 font-medium text-right">{member.joinDate}</div>
-            <div className="text-gray-400">म्याद सकिने</div>
-            <div className="text-gray-800 font-medium text-right">{member.paymentExpiryDate}</div>
+            <div className="text-gray-400">सामेल मिति (वि.सं.)</div>
+            <div className="text-gray-800 font-medium text-right">{formatBs(member.joinDate)}</div>
+            <div className="text-gray-400">तिरेको आ.व.</div>
+            <div className="text-gray-800 font-medium text-right">
+              {member.paidThroughFiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(member.paidThroughFiscalYear)) : '-'}
+            </div>
+            <div className="text-gray-400">म्याद (आषाढ़ मसान्त)</div>
+            <div className="text-gray-800 font-medium text-right">{formatBs(getMemberExpiryAdIso(member.paidThroughFiscalYear))}</div>
           </div>
 
           <div className="w-20 h-20 bg-gray-100 border border-dashed border-gray-300 rounded-lg flex items-center justify-center text-[10px] text-gray-400 mt-4">
