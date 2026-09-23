@@ -62,7 +62,7 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
         toast('सामेल मिति मान्य छैन', 'error')
         return
       }
-      onSubmit({ ...form, membershipId: formatMembershipId(joinYearBs, seq) })
+      onSubmit({ ...form, membershipId: initial.hasLogin ? initial.membershipId : formatMembershipId(joinYearBs, seq) })
     } else {
       onSubmit(form)
     }
@@ -96,6 +96,7 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
             <input
               required
               type="number"
+              disabled={initial.hasLogin}
               min="1"
               max="99999"
               value={membershipSeq}
@@ -106,7 +107,9 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
           </div>
           <p className="text-xs text-gray-400 mt-1">
             मानक ढाँचा: NCAS-सामेल भएको वि.सं. वर्ष-५ अंकको क्रम संख्या (जस्तै NCAS-{joinYearBs || '2083'}-00007)। वर्ष स्वतः "सामेल मिति" बाट लिइन्छ।
-            सदस्य पोर्टलमा प्रवेश गर्न छुट्टै अनुमति पाएको email र password चाहिन्छ; यो सदस्यता नम्बर मात्रले लगइन हुँदैन।
+            {initial.hasLogin
+              ? 'सदस्य login सक्रिय भएकाले यो आइडी परिवर्तन गर्न मिल्दैन।'
+              : 'सदस्यले यही आइडी, admin ले दिएको एकपटकको code र फोन नम्बरबाट खाता सक्रिय गरी password बनाउँछन्।'}
           </p>
         </div>
       )}

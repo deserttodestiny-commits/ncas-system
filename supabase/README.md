@@ -33,3 +33,28 @@ are not authentication.
 The `public.ncas_system_current_role()` function is for UI navigation; database RLS is
 the actual enforcement. Backups, private photo storage, member onboarding, and
 authenticated write-path verification remain necessary before real-data use.
+
+## Member ID login
+
+`20260923020000_member_activation.sql` adds admin-issued, single-use activation
+codes. It and the `ncas-member-admin` and `ncas-member-access` Edge Functions
+were applied to the same `ncas-website` project on 2026-09-23.
+The first function requires a signed-in System admin and returns a fresh code
+once; it invalidates an earlier code. The second verifies the member ID,
+registered phone number, and code before creating or resetting a member Auth
+account. It uses the project's server-provided secret key inside Supabase only;
+the browser never receives that key. Codes expire in seven days or after five
+incorrect guesses. The member then chooses a new password (minimum 12
+characters). A phone number is only an identity check during activation; it is
+never saved as a permanent Auth password. Subsequent login uses member ID and
+the chosen password, not email.
+
+The public `ncas-member-access` function uses `auth: 'publishable'`; its
+`verify_jwt = false` setting is required to admit a signed-out first-time
+member. The wrapper still checks the publishable API key. The
+`ncas-member-admin` function keeps JWT verification on and checks
+`ncas_system_admins` before issuing a code. Never make its admin action
+accessible based only on a client-supplied role. Do not deploy the frontend
+until both functions and the migration are working. Invalid member IDs were
+verified to return a generic 400 response; no production member account was
+created for testing.

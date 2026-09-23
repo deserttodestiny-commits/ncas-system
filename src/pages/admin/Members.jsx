@@ -12,6 +12,8 @@ import EmptyState from '../../components/EmptyState'
 import StatusBadge from '../../components/StatusBadge'
 import Avatar from '../../components/Avatar'
 import MemberForm from './MemberForm'
+import { isSupabaseConfigured } from '../../lib/supabase'
+import { issueMemberCode } from '../../lib/memberAccess'
 
 function toCsvValue(v) {
   const s = Array.isArray(v) ? v.join('; ') : String(v ?? '')
@@ -33,6 +35,8 @@ export default function Members() {
 
   const [modalMode, setModalMode] = useState(null) // 'add' | 'edit' | 'view'
   const [activeMember, setActiveMember] = useState(null)
+  const [codeResult, setCodeResult] = useState(null)
+  const [codeBusy, setCodeBusy] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -81,6 +85,20 @@ export default function Members() {
       } catch (error) {
         toast(error.message, 'error')
       }
+    }
+  }
+
+  const handleIssueCode = async (m) => {
+    const ok = await confirm(`${m.fullName} का लागि नयाँ सक्रियता code बनाउने? यसले पुरानो प्रयोग नभएको code रद्द गर्छ।`)
+    if (!ok) return
+    setCodeBusy(true)
+    try {
+      const result = await issueMemberCode(m.id)
+      setCodeResult({ ...result, memberName: m.fullName, membershipId: m.membershipId })
+    } catch (error) {
+      toast(error.message || 'Code बनाउन सकिएन।', 'error')
+    } finally {
+      setCodeBusy(false)
     }
   }
 
@@ -167,6 +185,7 @@ export default function Members() {
                   <th className="px-4 py-3">प्रकार</th>
                   <th className="px-4 py-3">तिरेको आ.व.</th>
                   <th className="px-4 py-3">स्थिति</th>
+                  {isSupabaseConfigured && <th className="px-4 py-3">Login</th>}
                   <th className="px-4 py-3 text-right">कार्य</th>
                 </tr>
               </thead>
@@ -187,8 +206,10 @@ export default function Members() {
                       {m.paidThroughFiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(m.paidThroughFiscalYear)) : '-'}
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={getMemberPaymentStatus(m.paidThroughFiscalYear)} /></td>
+                    {isSupabaseConfigured && <td className="px-4 py-3 text-gray-600">{m.hasLogin ? 'सक्रिय' : 'बाँकी'}</td>}
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
+                        {isSupabaseConfigured && <button disabled={codeBusy} onClick={() => handleIssueCode(m)} className="text-ncas-blue hover:underline text-xs font-medium disabled:opacity-50">{m.hasLogin ? 'Password reset code' : 'सक्रियता code'}</button>}
                         <button onClick={() => openView(m)} className="text-ncas-blue hover:underline text-xs font-medium">हेर्नुहोस्</button>
                         <button onClick={() => openEdit(m)} className="text-ncas-gold hover:underline text-xs font-medium">सम्पादन</button>
                         {canRemove && <button onClick={() => handleDelete(m)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>}
@@ -245,6 +266,18 @@ export default function Members() {
             />
             <Detail label="मासिक शुल्क" value={`रु. ${activeMember.monthlyFee}`} />
             {activeMember.notes && <Detail label="कैफियत" value={activeMember.notes} full />}
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={Boolean(codeResult)} onClose={() => setCodeResult(null)} title="एकपटकको सदस्य code">
+        {codeResult && (
+          <div className="space-y-4 text-sm">
+            <p><strong>{codeResult.memberName}</strong> ({codeResult.membershipId}) लाई यो code निजी रूपमा दिनुहोस्।</p>
+            <p className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-center font-mono text-xl font-bold tracking-wider select-all">{codeResult.code}</p>
+            <p className="text-gray-600">७ दिनसम्म मात्र मान्य। एकपटक प्रयोगपछि वा ५ गलत प्रयासपछि बन्द हुन्छ। यो बन्द गरेपछि फेरि हेर्न मिल्दैन; आवश्यक परे नयाँ code बनाउनुहोस्।</p>
+            <p className="text-gray-600">सदस्यले “पहिलो password / बिर्सियो” मा आफ्नो ID, दर्ता फोन नम्बर र यो code राखेर नयाँ password बनाउँछन्।</p>
+            <button type="button" onClick={() => setCodeResult(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
           </div>
         )}
       </Modal>

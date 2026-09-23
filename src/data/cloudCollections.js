@@ -11,6 +11,7 @@ const TABLES = {
 function memberFromRow(row) {
   return {
     id: row.id,
+    hasLogin: Boolean(row.auth_user_id),
     membershipId: row.membership_id,
     fullName: row.full_name,
     gender: row.gender || '',
