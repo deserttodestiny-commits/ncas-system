@@ -19,7 +19,8 @@ Local development still provides a demo mode for testing screens. It uses browse
 An empty, access-controlled database migration is being prepared on the
 `codex/secure-ncas-system` branch in [supabase/](supabase/README.md). It has
 not been applied or connected to the live app. The Supabase Free plan account
-currently has two active projects, so a dedicated third project requires an
-account-owner decision; do not repurpose another project without checking it.
+has reached its two-project limit. NCAS System will use prefixed tables in the
+existing `ncas-website` project, as requested, without touching the other
+application's Supabase project.
 
 Run locally with `npm install` and `npm run dev`. Use `npm run build` and `npm run lint` to check changes.
