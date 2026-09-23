@@ -16,4 +16,10 @@ Local development still provides a demo mode for testing screens. It uses browse
 4. Add migration, audit trail, backup, and access-control tests before enabling real users.
 5. Configure the Vercel project with the browser-safe Supabase URL and publishable key, then connect the NCAS website's second login to the deployed System app.
 
+An empty, access-controlled database migration is being prepared on the
+`codex/secure-ncas-system` branch in [supabase/](supabase/README.md). It has
+not been applied or connected to the live app. The Supabase Free plan account
+currently has two active projects, so a dedicated third project requires an
+account-owner decision; do not repurpose another project without checking it.
+
 Run locally with `npm install` and `npm run dev`. Use `npm run build` and `npm run lint` to check changes.
