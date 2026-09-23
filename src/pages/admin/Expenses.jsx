@@ -11,7 +11,7 @@ import EmptyState from '../../components/EmptyState'
 const emptyForm = { date: new Date().toISOString().slice(0, 10), category: EXPENSE_CATEGORIES[0], amount: '', description: '', paidTo: '' }
 
 export default function Expenses() {
-  const { items: expenses, addItem, removeItem } = useCollection('expenses')
+  const { items: expenses, addItem, removeItem, canRemove } = useCollection('expenses')
   const { toast, confirm } = useUi()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
@@ -21,19 +21,27 @@ export default function Expenses() {
   const total = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
   const sorted = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    addItem({ id: uid(), ...form, amount: Number(form.amount) || 0, bsKey: bsMonthKeyForAdDate(form.date) })
-    toast('खर्च थपियो')
-    setForm(emptyForm)
-    setOpen(false)
+    try {
+      await addItem({ id: uid(), ...form, amount: Number(form.amount) || 0, bsKey: bsMonthKeyForAdDate(form.date) })
+      toast('खर्च थपियो')
+      setForm(emptyForm)
+      setOpen(false)
+    } catch (error) {
+      toast(`खर्च सुरक्षित भएन: ${error.message}`, 'error')
+    }
   }
 
   const handleDelete = async (entry) => {
     const ok = await confirm('यो खर्च प्रविष्टि हटाउने पक्का हो?')
     if (ok) {
-      removeItem(entry.id)
-      toast('प्रविष्टि हटाइयो', 'info')
+      try {
+        await removeItem(entry.id)
+        toast('प्रविष्टि हटाइयो', 'info')
+      } catch (error) {
+        toast(error.message, 'error')
+      }
     }
   }
 
@@ -74,7 +82,7 @@ export default function Expenses() {
                     <td className="px-4 py-3 text-gray-600">{e.paidTo}</td>
                     <td className="px-4 py-3 text-right font-medium text-ncas-danger">{formatNPR(e.amount)}</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleDelete(e)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>
+                      {canRemove && <button onClick={() => handleDelete(e)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>}
                     </td>
                   </tr>
                 ))}

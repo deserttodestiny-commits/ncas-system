@@ -7,8 +7,8 @@ export default function SidebarLayout({ title, subtitle, navItems, children }) {
   const { logout } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/')
   }
 

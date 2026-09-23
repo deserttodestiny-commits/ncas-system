@@ -13,6 +13,7 @@ import BsDateInput from '../../components/BsDateInput'
 import FiscalYearSelect from '../../components/FiscalYearSelect'
 import Modal from '../../components/Modal'
 import EmptyState from '../../components/EmptyState'
+import { isSupabaseConfigured } from '../../lib/supabase'
 
 const currentFy = getCurrentFiscalYear()
 
@@ -27,8 +28,8 @@ const emptyForm = {
 }
 
 export default function Income() {
-  const { items: income, addItem, removeItem } = useCollection('income')
-  const { items: members, updateItem: updateMember } = useCollection('members')
+  const { items: income, addItem, removeItem, canRemove } = useCollection('income')
+  const { items: members, updateItem: updateMember, refresh: refreshMembers } = useCollection('members')
   const { toast, confirm } = useUi()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
@@ -45,7 +46,7 @@ export default function Income() {
     setForm((f) => ({ ...f, memberId, receivedFrom: member ? member.fullName : f.receivedFrom }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const entry = {
       id: uid(),
@@ -55,29 +56,33 @@ export default function Income() {
       memberId: form.memberId || null,
       bsKey: bsMonthKeyForAdDate(form.date),
     }
-    addItem(entry)
-
-    if (entry.memberId) {
-      const member = members.find((m) => m.id === entry.memberId)
-      if (member) {
-        const newPaidThrough = Math.max(Number(member.paidThroughFiscalYear) || 0, entry.fiscalYear)
-        updateMember(member.id, { paidThroughFiscalYear: newPaidThrough })
-        toast(`आम्दानी थपियो — ${member.fullName} को सदस्यता आ.व. ${fiscalYearLabel(fiscalYearFromEndYear(newPaidThrough))} सम्म नवीकरण भयो`)
-      } else {
-        toast('आम्दानी थपियो')
-      }
-    } else {
-      toast('आम्दानी थपियो')
+    try {
+      await addItem(entry)
+      if (entry.memberId) {
+        const member = members.find((m) => m.id === entry.memberId)
+        if (member) {
+          const newPaidThrough = Math.max(Number(member.paidThroughFiscalYear) || 0, entry.fiscalYear)
+          if (isSupabaseConfigured) await refreshMembers()
+          else await updateMember(member.id, { paidThroughFiscalYear: newPaidThrough })
+          toast(`आम्दानी थपियो — ${member.fullName} को सदस्यता आ.व. ${fiscalYearLabel(fiscalYearFromEndYear(newPaidThrough))} सम्म नवीकरण भयो`)
+        } else toast('आम्दानी थपियो')
+      } else toast('आम्दानी थपियो')
+      setForm(emptyForm)
+      setOpen(false)
+    } catch (error) {
+      toast(`आम्दानी सुरक्षित भएन वा सदस्यता अद्यावधिक भएन: ${error.message}`, 'error')
     }
-    setForm(emptyForm)
-    setOpen(false)
   }
 
   const handleDelete = async (entry) => {
     const ok = await confirm('यो आम्दानी प्रविष्टि हटाउने पक्का हो?')
     if (ok) {
-      removeItem(entry.id)
-      toast('प्रविष्टि हटाइयो', 'info')
+      try {
+        await removeItem(entry.id)
+        toast('प्रविष्टि हटाइयो', 'info')
+      } catch (error) {
+        toast(error.message, 'error')
+      }
     }
   }
 
@@ -136,7 +141,7 @@ export default function Income() {
                     <td className="px-4 py-3 text-gray-700">{e.description}</td>
                     <td className="px-4 py-3 text-right font-medium text-ncas-success">{formatNPR(e.amount)}</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleDelete(e)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>
+                      {canRemove && <button onClick={() => handleDelete(e)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>}
                     </td>
                   </tr>
                 ))}

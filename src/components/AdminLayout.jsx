@@ -12,7 +12,8 @@ const NAV_ITEMS = [
 ]
 
 export default function AdminLayout() {
-  const { session } = useAuth()
+  const { session, loading } = useAuth()
+  if (loading) return <p className="p-8 text-center">खाता जाँचिँदैछ...</p>
   if (!session || session.role !== 'admin') return <Navigate to="/" replace />
 
   return (

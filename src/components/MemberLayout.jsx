@@ -12,7 +12,8 @@ const NAV_ITEMS = [
 ]
 
 export default function MemberLayout() {
-  const { session } = useAuth()
+  const { session, loading } = useAuth()
+  if (loading) return <p className="p-8 text-center">खाता जाँचिँदैछ...</p>
   if (!session || session.role !== 'member') return <Navigate to="/" replace />
 
   return (

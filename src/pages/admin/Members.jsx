@@ -3,7 +3,7 @@ import { useCollection } from '../../data/useCollection'
 import { ART_FIELDS, DISTRICTS, MEMBERSHIP_TYPES, PAYMENT_STATUSES } from '../../data/districts'
 import { nextMembershipId, uid } from '../../data/storage'
 import {
-  fiscalYearFromEndYear, fiscalYearLabel, formatBs,
+  adToBs, fiscalYearFromEndYear, fiscalYearLabel, formatBs,
   getMemberExpiryAdIso, getMemberPaymentStatus, getTodayBs,
 } from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
@@ -22,7 +22,7 @@ function toCsvValue(v) {
 }
 
 export default function Members() {
-  const { items: members, addItem, updateItem, removeItem } = useCollection('members')
+  const { items: members, addItem, updateItem, removeItem, canRemove } = useCollection('members')
   const { toast, confirm } = useUi()
 
   const [search, setSearch] = useState('')
@@ -51,33 +51,36 @@ export default function Members() {
   const openView = (m) => { setActiveMember(m); setModalMode('view') }
   const closeModal = () => { setModalMode(null); setActiveMember(null) }
 
-  const handleSubmit = (form) => {
-    if (modalMode === 'add') {
-      const membershipId = nextMembershipId(members, getTodayBs().year)
-      addItem({ id: uid(), membershipId, ...form })
-      toast('नयाँ सदस्य थपियो')
-    } else if (modalMode === 'edit') {
-      const newId = form.membershipId?.trim()
-      if (!newId) {
-        toast('सदस्यता आइडी खाली हुन सक्दैन', 'error')
-        return
+  const handleSubmit = async (form) => {
+    try {
+      if (modalMode === 'add') {
+        const joinYear = adToBs(form.joinDate)?.year || getTodayBs().year
+        const membershipId = nextMembershipId(members, joinYear)
+        await addItem({ id: uid(), membershipId, ...form })
+        toast('नयाँ सदस्य थपियो')
+      } else if (modalMode === 'edit') {
+        const newId = form.membershipId?.trim()
+        if (!newId) return toast('सदस्यता आइडी खाली हुन सक्दैन', 'error')
+        const duplicate = members.some((m) => m.id !== activeMember.id && m.membershipId === newId)
+        if (duplicate) return toast('यो सदस्यता आइडी पहिले नै अर्को सदस्यसँग छ', 'error')
+        await updateItem(activeMember.id, { ...form, membershipId: newId })
+        toast('सदस्य विवरण अद्यावधिक भयो')
       }
-      const duplicate = members.some((m) => m.id !== activeMember.id && m.membershipId === newId)
-      if (duplicate) {
-        toast('यो सदस्यता आइडी पहिले नै अर्को सदस्यसँग छ', 'error')
-        return
-      }
-      updateItem(activeMember.id, { ...form, membershipId: newId })
-      toast('सदस्य विवरण अद्यावधिक भयो')
+      closeModal()
+    } catch (error) {
+      toast(`सदस्य सुरक्षित भएन: ${error.message}`, 'error')
     }
-    closeModal()
   }
 
   const handleDelete = async (m) => {
     const ok = await confirm(`${m.fullName} लाई हटाउने पक्का हो?`)
     if (ok) {
-      removeItem(m.id)
-      toast('सदस्य हटाइयो', 'info')
+      try {
+        await removeItem(m.id)
+        toast('सदस्य हटाइयो', 'info')
+      } catch (error) {
+        toast(error.message, 'error')
+      }
     }
   }
 
@@ -188,7 +191,7 @@ export default function Members() {
                       <div className="flex justify-end gap-2">
                         <button onClick={() => openView(m)} className="text-ncas-blue hover:underline text-xs font-medium">हेर्नुहोस्</button>
                         <button onClick={() => openEdit(m)} className="text-ncas-gold hover:underline text-xs font-medium">सम्पादन</button>
-                        <button onClick={() => handleDelete(m)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>
+                        {canRemove && <button onClick={() => handleDelete(m)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>}
                       </div>
                     </td>
                   </tr>

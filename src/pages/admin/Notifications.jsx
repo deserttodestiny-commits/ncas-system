@@ -11,26 +11,34 @@ const emptyForm = { title: '', message: '', target: 'All' }
 const emptyOppForm = { title: '', description: '', location: '', deadline: '', contact: '' }
 
 export default function Notifications() {
-  const { items: notifications, addItem, removeItem } = useCollection('notifications')
-  const { items: opportunities, addItem: addOpp, removeItem: removeOpp } = useCollection('opportunities')
+  const { items: notifications, addItem, removeItem, canRemove } = useCollection('notifications')
+  const { items: opportunities, addItem: addOpp, removeItem: removeOpp, canRemove: canRemoveOpp } = useCollection('opportunities')
   const { toast, confirm } = useUi()
   const [form, setForm] = useState(emptyForm)
   const [oppForm, setOppForm] = useState(emptyOppForm)
   const setOpp = (key) => (e) => setOppForm((f) => ({ ...f, [key]: e.target.value }))
 
-  const handleOppSubmit = (e) => {
+  const handleOppSubmit = async (e) => {
     e.preventDefault()
     if (!oppForm.title.trim()) return
-    addOpp({ id: uid(), ...oppForm })
-    toast('अवसर थपियो')
-    setOppForm(emptyOppForm)
+    try {
+      await addOpp({ id: uid(), ...oppForm })
+      toast('अवसर थपियो')
+      setOppForm(emptyOppForm)
+    } catch (error) {
+      toast(`अवसर सुरक्षित भएन: ${error.message}`, 'error')
+    }
   }
 
   const handleOppDelete = async (o) => {
     const ok = await confirm('यो अवसर हटाउने पक्का हो?')
     if (ok) {
-      removeOpp(o.id)
-      toast('अवसर हटाइयो', 'info')
+      try {
+        await removeOpp(o.id)
+        toast('अवसर हटाइयो', 'info')
+      } catch (error) {
+        toast(error.message, 'error')
+      }
     }
   }
 
@@ -38,19 +46,27 @@ export default function Notifications() {
 
   const sorted = [...notifications].sort((a, b) => new Date(b.date) - new Date(a.date))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.title.trim() || !form.message.trim()) return
-    addItem({ id: uid(), ...form, date: new Date().toISOString().slice(0, 10) })
-    toast('सूचना पठाइयो')
-    setForm(emptyForm)
+    try {
+      await addItem({ id: uid(), ...form, date: new Date().toISOString().slice(0, 10) })
+      toast('सूचना पठाइयो')
+      setForm(emptyForm)
+    } catch (error) {
+      toast(`सूचना सुरक्षित भएन: ${error.message}`, 'error')
+    }
   }
 
   const handleDelete = async (n) => {
     const ok = await confirm('यो सूचना हटाउने पक्का हो?')
     if (ok) {
-      removeItem(n.id)
-      toast('सूचना हटाइयो', 'info')
+      try {
+        await removeItem(n.id)
+        toast('सूचना हटाइयो', 'info')
+      } catch (error) {
+        toast(error.message, 'error')
+      }
     }
   }
 
@@ -92,7 +108,7 @@ export default function Notifications() {
                   <div className="text-sm text-gray-600 mt-0.5">{n.message}</div>
                   <div className="text-xs text-gray-400 mt-1">{formatBs(n.date)} · {n.target === 'All' ? 'सबै सदस्य' : n.target}</div>
                 </div>
-                <button onClick={() => handleDelete(n)} className="text-ncas-danger hover:underline text-xs font-medium shrink-0">हटाउनुहोस्</button>
+                {canRemove && <button onClick={() => handleDelete(n)} className="text-ncas-danger hover:underline text-xs font-medium shrink-0">हटाउनुहोस्</button>}
               </li>
             ))}
           </ul>
@@ -144,7 +160,7 @@ export default function Notifications() {
                   <div className="text-sm text-gray-600 mt-0.5">{o.description}</div>
                   <div className="text-xs text-gray-400 mt-1">{o.location} · अन्तिम मिति: {o.deadline ? formatBs(o.deadline) : '-'} · सम्पर्क: {o.contact}</div>
                 </div>
-                <button onClick={() => handleOppDelete(o)} className="text-ncas-danger hover:underline text-xs font-medium shrink-0">हटाउनुहोस्</button>
+                {canRemoveOpp && <button onClick={() => handleOppDelete(o)} className="text-ncas-danger hover:underline text-xs font-medium shrink-0">हटाउनुहोस्</button>}
               </li>
             ))}
           </ul>

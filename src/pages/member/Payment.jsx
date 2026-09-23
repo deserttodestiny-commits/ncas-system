@@ -6,14 +6,12 @@ import {
   daysUntilIso, fiscalYearFromEndYear, fiscalYearLabel, formatBs,
   getCurrentFiscalYear, getMemberExpiryAdIso, getMemberPaymentStatus,
 } from '../../data/bsCalendar'
-import { useUi } from '../../context/UiContext'
 import StatusBadge from '../../components/StatusBadge'
 import EmptyState from '../../components/EmptyState'
 
 export default function Payment() {
   const { member } = useCurrentMember()
   const { items: income } = useCollection('income')
-  const { toast } = useUi()
 
   const history = useMemo(
     () => (member ? income.filter((e) => e.memberId === member.id).sort((a, b) => new Date(b.date) - new Date(a.date)) : []),
@@ -37,10 +35,6 @@ export default function Payment() {
   const expiryIso = getMemberExpiryAdIso(member.paidThroughFiscalYear)
   const days = daysUntilIso(expiryIso)
   const totalPaid = history.reduce((s, h) => s + (Number(h.amount) || 0), 0)
-
-  const handleNotify = () => {
-    toast('तपाईंको भुक्तानी सूचना पठाइयो! NCAS कार्यालयले छिट्टै confirm गर्नेछ।')
-  }
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -72,20 +66,8 @@ export default function Payment() {
 
       <div className="bg-white rounded-xl shadow-sm p-5">
         <h2 className="font-semibold text-ncas-dark mb-4">भुक्तानी निर्देशन</h2>
-        <ul className="space-y-2 text-sm text-gray-700">
-          <li>🏦 <strong>बैंक हस्तान्तरण:</strong> NCAS खाता नं. — [कार्यालयबाट प्राप्त गर्नुहोस्]</li>
-          <li>📱 <strong>QR कोड:</strong></li>
-        </ul>
-        <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 text-xs mt-2 mb-3">
-          QR Code
-        </div>
-        <ul className="space-y-2 text-sm text-gray-700">
-          <li>🏢 <strong>कार्यालयमा नगद:</strong> बागबजार, काठमाडौं</li>
-          <li>📞 <strong>सम्पर्क:</strong> info@ncas.org.np</li>
-        </ul>
-        <button onClick={handleNotify} className="mt-5 px-5 py-2.5 rounded-lg bg-ncas-gold text-white font-medium hover:opacity-90">
-          भुक्तानी गरिसकेँ — सूचित गर्नुस्
-        </button>
+        <p className="text-sm text-gray-700">अनलाइन भुक्तानी र भुक्तानी सूचना पठाउने सुविधा अझै सक्रिय छैन। आधिकारिक भुक्तानी विधि र विवरणका लागि संघसँग सिधै पुष्टि गर्नुहोस्।</p>
+        <p className="text-sm text-gray-700 mt-3">Email: <a className="text-ncas-blue underline" href="mailto:ncasnepal@gmail.com">ncasnepal@gmail.com</a> · WhatsApp: <a className="text-ncas-blue underline" href="https://wa.me/9779767653158">+977 9767653158</a></p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-5">

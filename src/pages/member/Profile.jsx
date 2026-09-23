@@ -3,6 +3,7 @@ import { useCurrentMember } from '../../data/useCurrentMember'
 import { formatBs } from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
 import Avatar from '../../components/Avatar'
+import { isSupabaseConfigured } from '../../lib/supabase'
 
 export default function Profile() {
   const { member, updateItem } = useCurrentMember()
@@ -56,7 +57,9 @@ export default function Profile() {
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white rounded-xl shadow-sm p-5 space-y-4">
+      {isSupabaseConfigured ? (
+        <p className="bg-white rounded-xl shadow-sm p-5 text-sm text-gray-600">विवरण सच्याउन संघको कार्यालयमा सम्पर्क गर्नुहोस्। सदस्यता र भुक्तानी अवस्था सदस्य आफैंले बदल्न मिल्दैन।</p>
+      ) : <form onSubmit={handleSave} className="bg-white rounded-xl shadow-sm p-5 space-y-4">
         <h2 className="font-semibold text-ncas-dark">सम्पादन गर्न सकिने विवरण</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
@@ -83,7 +86,7 @@ export default function Profile() {
         <button type="submit" className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90">
           सुरक्षित गर्नुहोस्
         </button>
-      </form>
+      </form>}
     </div>
   )
 }

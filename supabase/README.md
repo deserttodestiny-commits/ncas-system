@@ -1,32 +1,19 @@
 # NCAS System database setup
 
-This folder is a draft for the existing `ncas-website` Supabase project. The
-Free plan has reached its two-project limit, and the user chose to share this
-NCAS-owned backend. All new tables/functions use `ncas_system_` names; no
-existing website table is renamed or modified. No sample people, payments, or
-credentials are included.
+The migrations in this folder were applied to the existing NCAS-owned
+`ncas-website` Supabase project (`kxnjilquajxcqhujzghn`) on 2026-09-23. Do not
+run them against `supabase-charcoal-horizon` or any other project. No demo rows
+were added; all System tables use the `ncas_system_*` prefix.
 
-## Before applying
-
-1. Review and test the migration against the existing `ncas-website` project
-   before entering real member or financial data. Take a backup first because
-   the project already holds NCAS website content.
-2. Do not apply this SQL to `supabase-charcoal-horizon`; it already contains
-   another application's client, billing, and stock tables.
-3. Apply the migration only after a review of its access changes.
-   The migration enables RLS, revokes default client access, and grants only
-   authenticated, policy-limited access. No `anon` data access is intended.
+`20260923000000_initial_schema.sql` creates access-controlled tables and the role
+RPC. `20260923010000_membership_renewal.sql` atomically updates a member's
+paid-through fiscal year when an authorized income entry is inserted.
 
 ## Roles and initial access
 
-`ncas_system_admins` is not client-readable or client-writable. After an admin account
-is created through Supabase Auth, a trusted project owner can bootstrap it in
-the SQL Editor using its actual `auth.users.id`:
-
-```sql
-insert into public.ncas_system_admins (user_id)
-values ('REPLACE_WITH_AUTH_USER_UUID');
-```
+`ncas_system_admins` is not client-readable or client-writable.
+`ncasnepal@gmail.com` was granted System admin access by matching its existing
+Supabase Auth user ID.
 
 Do not paste a password or service-role/secret key into this repository. Do not
 grant admin by user-editable metadata. A member account is linked by setting
@@ -44,5 +31,5 @@ are not authentication.
   audited reversal workflow that is not built yet.
 
 The `public.ncas_system_current_role()` function is for UI navigation; database RLS is
-the actual enforcement. Photo storage, audited finance corrections, access
-tests, and frontend integration are still required before production use.
+the actual enforcement. Backups, private photo storage, member onboarding, and
+authenticated write-path verification remain necessary before real-data use.

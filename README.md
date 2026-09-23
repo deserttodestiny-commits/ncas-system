@@ -2,25 +2,31 @@
 
 Member management, finance records, and a member portal for Nepal Commercial Artist Sangh.
 
-## Current status
+## Deployment status
 
-This is a prototype, **not a production system**. The old bundled sample records have been removed. On each browser's first visit after this change, the original `ncas_*` demo data and demo session are cleared once. The production build does not offer the old browser-only admin/member login. Do not enter real member or financial data yet.
+The app is designed for Vercel, with authentication and records in the NCAS-owned
+`ncas-website` Supabase project. System data lives only in prefixed `ncas_system_*`
+tables; no example member or finance rows were inserted. Previous browser-local demo
+records were removed, and production has no demo login. The website and System use
+separate admin permissions even though they share a Supabase project.
 
-Local development still provides a demo mode for testing screens. It uses browser `localStorage`, so records are not shared between devices and are not backed up.
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Vercel for Production,
+Preview, and Development. These are browser-safe values, **never** a service-role key.
+Copy `.env.example` to `.env.local` to run locally. Run `npm install`, `npm run dev`,
+`npm run build`, and `npm run lint`.
 
-## Next production steps
+The first System admin is `ncasnepal@gmail.com`, linked by Auth user ID in
+`ncas_system_admins`. The owner must use that account's existing Supabase password;
+there is no password in this repository. A member needs a Supabase Auth account
+explicitly linked to their member row. Adding a member record alone does not create
+login access.
 
-1. Create a dedicated Supabase backend for NCAS System.
-2. Replace demo login with Supabase Auth and server-enforced admin/member permissions.
-3. Move members, income, expenses, notifications, and opportunities into protected database tables; add private file storage as needed.
-4. Add migration, audit trail, backup, and access-control tests before enabling real users.
-5. Configure the Vercel project with the browser-safe Supabase URL and publishable key, then connect the NCAS website's second login to the deployed System app.
+## Important limits before real-data use
 
-An empty, access-controlled database migration is being prepared on the
-`codex/secure-ncas-system` branch in [supabase/](supabase/README.md). It has
-not been applied or connected to the live app. The Supabase Free plan account
-has reached its two-project limit. NCAS System will use prefixed tables in the
-existing `ncas-website` project, as requested, without touching the other
-application's Supabase project.
-
-Run locally with `npm install` and `npm run dev`. Use `npm run build` and `npm run lint` to check changes.
+- Authenticated end-to-end write testing with a real admin is pending; do not enter
+  sensitive production records until that check.
+- Membership invites/linking, audited finance corrections, backups, and private
+  photo storage need a follow-up release. Browser delete of finance rows is disabled.
+- Online payment, SMS, and payment notifications are not active. Do not treat the
+  finance form as a payment gateway.
+- Access relies on Supabase RLS, not frontend route guards. See [supabase/](supabase/README.md).
