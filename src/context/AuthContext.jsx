@@ -4,15 +4,17 @@ import { load, save } from '../data/storage'
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(() => load('session', null))
+  const demoMode = import.meta.env.DEV
+  const [session, setSession] = useState(() => demoMode ? load('session', null) : null)
 
   useEffect(() => {
+    if (!demoMode) return
     if (session) save('session', session)
     else localStorage.removeItem('ncas_session')
-  }, [session])
+  }, [demoMode, session])
 
-  const loginAdmin = () => setSession({ role: 'admin' })
-  const loginMember = (membershipId) => setSession({ role: 'member', membershipId })
+  const loginAdmin = () => { if (demoMode) setSession({ role: 'admin' }) }
+  const loginMember = (membershipId) => { if (demoMode) setSession({ role: 'member', membershipId }) }
   const logout = () => setSession(null)
 
   return (

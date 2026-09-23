@@ -1,8 +1,6 @@
-import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { UiProvider } from './context/UiContext'
-import { ensureSeeded } from './data/seed'
 
 import Landing from './pages/Landing'
 import AdminLayout from './components/AdminLayout'
@@ -23,10 +21,6 @@ import MemberNotifications from './pages/member/Notifications'
 import Opportunities from './pages/member/Opportunities'
 
 export default function App() {
-  useEffect(() => {
-    ensureSeeded()
-  }, [])
-
   return (
     <UiProvider>
       <AuthProvider>

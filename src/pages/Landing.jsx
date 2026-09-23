@@ -9,20 +9,13 @@ export default function Landing() {
   const { loginAdmin, loginMember } = useAuth()
   const { toast } = useUi()
 
-  const [adminUser, setAdminUser] = useState('')
-  const [adminPass, setAdminPass] = useState('')
   const [memberId, setMemberId] = useState('')
   const [memberPhone, setMemberPhone] = useState('')
 
-  const handleAdminLogin = (e) => {
-    e.preventDefault()
-    if (adminUser === 'admin' && adminPass === 'ncas2026') {
-      loginAdmin()
-      toast('स्वागत छ, प्रशासक!')
-      navigate('/admin')
-    } else {
-      toast('गलत प्रयोगकर्ता नाम वा पासवर्ड', 'error')
-    }
+  const handleAdminDemo = () => {
+    loginAdmin()
+    toast('स्थानीय परीक्षण मोडमा प्रवेश गरियो')
+    navigate('/admin')
   }
 
   const handleMemberLogin = (e) => {
@@ -51,34 +44,22 @@ export default function Landing() {
       </header>
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-10">
+        {import.meta.env.PROD ? (
+          <section className="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-8 text-center border-t-4 border-ncas-gold">
+            <h2 className="text-xl font-bold text-ncas-dark mb-3">सुरक्षित लगइन तयारीमा छ</h2>
+            <p className="text-gray-600">सदस्य र वित्तीय विवरणका लागि Supabase मा सुरक्षित login र साझा database जोडिँदैछ। यो तयार नभएसम्म यहाँ वास्तविक विवरण नराख्नुहोस्।</p>
+          </section>
+        ) : (
         <div className="grid md:grid-cols-2 gap-6">
-          <form onSubmit={handleAdminLogin} className="bg-white rounded-xl shadow-md p-6 border-t-4 border-ncas-dark">
+          <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-ncas-dark">
             <h2 className="text-lg font-bold text-ncas-dark mb-1 flex items-center gap-2">
-              <span>🛡️</span> Admin Login
+              <span>🛡️</span> Admin Demo
             </h2>
-            <p className="text-sm text-gray-500 mb-5">प्रशासकीय प्रवेश</p>
-
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            <input
-              value={adminUser}
-              onChange={(e) => setAdminUser(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-ncas-blue"
-              placeholder="admin"
-            />
-
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              value={adminPass}
-              onChange={(e) => setAdminPass(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-5 focus:outline-none focus:ring-2 focus:ring-ncas-blue"
-              placeholder="••••••••"
-            />
-
-            <button type="submit" className="w-full bg-ncas-dark hover:opacity-90 text-white font-semibold py-2.5 rounded-lg transition">
-              लगइन गर्नुहोस्
+            <p className="text-sm text-gray-500 mb-5">स्थानीय विकासमा परीक्षणका लागि मात्र</p>
+            <button type="button" onClick={handleAdminDemo} className="w-full bg-ncas-dark hover:opacity-90 text-white font-semibold py-2.5 rounded-lg transition">
+              Demo खोल्नुहोस्
             </button>
-          </form>
+          </div>
 
           <form onSubmit={handleMemberLogin} className="bg-white rounded-xl shadow-md p-6 border-t-4 border-ncas-gold">
             <h2 className="text-lg font-bold text-ncas-dark mb-1 flex items-center gap-2">
@@ -107,6 +88,7 @@ export default function Landing() {
             </button>
           </form>
         </div>
+        )}
       </main>
 
       <footer className="text-center text-xs text-gray-400 py-6">

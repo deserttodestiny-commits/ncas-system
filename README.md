@@ -1,16 +1,19 @@
-# React + Vite
+# NCAS System
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Member management, finance records, and a member portal for Nepal Commercial Artist Sangh.
 
-Currently, two official plugins are available:
+## Current status
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This is a prototype, **not a production system**. The old bundled sample records have been removed. On each browser's first visit after this change, the original `ncas_*` demo data and demo session are cleared once. The production build does not offer the old browser-only admin/member login. Do not enter real member or financial data yet.
 
-## React Compiler
+Local development still provides a demo mode for testing screens. It uses browser `localStorage`, so records are not shared between devices and are not backed up.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Next production steps
 
-## Expanding the Oxlint configuration
+1. Create a dedicated Supabase backend for NCAS System.
+2. Replace demo login with Supabase Auth and server-enforced admin/member permissions.
+3. Move members, income, expenses, notifications, and opportunities into protected database tables; add private file storage as needed.
+4. Add migration, audit trail, backup, and access-control tests before enabling real users.
+5. Configure the Vercel project with the browser-safe Supabase URL and publishable key, then connect the NCAS website's second login to the deployed System app.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Run locally with `npm install` and `npm run dev`. Use `npm run build` and `npm run lint` to check changes.
