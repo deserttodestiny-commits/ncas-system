@@ -18,7 +18,7 @@ const emptyForm = {
   paidThroughFiscalYear: '', monthlyFee: 100, notes: '', photo: '',
 }
 
-export default function MemberForm({ initial, onCancel, onSubmit }) {
+export default function MemberForm({ initial, onCancel, onSubmit, isSaving = false }) {
   const [form, setForm] = useState(() => (initial ? { ...emptyForm, ...initial } : emptyForm))
   const [membershipSeq, setMembershipSeq] = useState(() => parseMembershipId(initial?.membershipId)?.seq ?? '')
   const { toast } = useUi()
@@ -227,11 +227,11 @@ export default function MemberForm({ initial, onCancel, onSubmit }) {
       </div>
 
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">
+        <button type="button" disabled={isSaving} onClick={onCancel} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium disabled:opacity-50">
           रद्द गर्नुहोस्
         </button>
-        <button type="submit" className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90">
-          सुरक्षित गर्नुहोस्
+        <button type="submit" disabled={isSaving} className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90 disabled:opacity-50">
+          {isSaving ? 'सुरक्षित हुँदैछ…' : 'सुरक्षित गर्नुहोस्'}
         </button>
       </div>
     </form>

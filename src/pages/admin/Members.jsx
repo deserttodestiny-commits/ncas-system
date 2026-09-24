@@ -37,6 +37,7 @@ export default function Members() {
   const [activeMember, setActiveMember] = useState(null)
   const [codeResult, setCodeResult] = useState(null)
   const [codeBusy, setCodeBusy] = useState(false)
+  const [saveBusy, setSaveBusy] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -56,12 +57,25 @@ export default function Members() {
   const closeModal = () => { setModalMode(null); setActiveMember(null) }
 
   const handleSubmit = async (form) => {
+    if (saveBusy) return
+    setSaveBusy(true)
     try {
       if (modalMode === 'add') {
         const joinYear = adToBs(form.joinDate)?.year || getTodayBs().year
         const membershipId = nextMembershipId(members, joinYear)
-        await addItem({ id: uid(), membershipId, ...form })
-        toast('नयाँ सदस्य थपियो')
+        const added = await addItem({ id: uid(), membershipId, ...form })
+        closeModal()
+        if (isSupabaseConfigured) {
+          try {
+            const result = await issueMemberCode(added.id)
+            setCodeResult({ ...result, memberName: added.fullName, membershipId: added.membershipId })
+            toast('सदस्य थपियो र सक्रियता SMS पठाउने अनुरोध स्वीकारियो।')
+          } catch (error) {
+            toast(`सदस्य थपियो, तर SMS गएन: ${error.message} सदस्यको Login बटनबाट फेरि पठाउनुहोस्।`, 'error')
+          }
+        } else {
+          toast('नयाँ सदस्य थपियो')
+        }
       } else if (modalMode === 'edit') {
         const newId = form.membershipId?.trim()
         if (!newId) return toast('सदस्यता आइडी खाली हुन सक्दैन', 'error')
@@ -69,10 +83,12 @@ export default function Members() {
         if (duplicate) return toast('यो सदस्यता आइडी पहिले नै अर्को सदस्यसँग छ', 'error')
         await updateItem(activeMember.id, { ...form, membershipId: newId })
         toast('सदस्य विवरण अद्यावधिक भयो')
+        closeModal()
       }
-      closeModal()
     } catch (error) {
       toast(`सदस्य सुरक्षित भएन: ${error.message}`, 'error')
+    } finally {
+      setSaveBusy(false)
     }
   }
 
@@ -89,14 +105,14 @@ export default function Members() {
   }
 
   const handleIssueCode = async (m) => {
-    const ok = await confirm(`${m.fullName} का लागि नयाँ सक्रियता code बनाउने? यसले पुरानो प्रयोग नभएको code रद्द गर्छ।`)
+    const ok = await confirm(`${m.fullName} को दर्ता मोबाइलमा नयाँ ${m.hasLogin ? 'password reset' : 'सक्रियता'} code SMS पठाउने? यसले पुरानो प्रयोग नभएको code रद्द गर्छ र SMS credit खर्च हुन्छ।`)
     if (!ok) return
     setCodeBusy(true)
     try {
       const result = await issueMemberCode(m.id)
       setCodeResult({ ...result, memberName: m.fullName, membershipId: m.membershipId })
     } catch (error) {
-      toast(error.message || 'Code बनाउन सकिएन।', 'error')
+      toast(error.message || 'SMS पठाउन सकिएन।', 'error')
     } finally {
       setCodeBusy(false)
     }
@@ -209,7 +225,7 @@ export default function Members() {
                     {isSupabaseConfigured && <td className="px-4 py-3 text-gray-600">{m.hasLogin ? 'सक्रिय' : 'बाँकी'}</td>}
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        {isSupabaseConfigured && <button disabled={codeBusy} onClick={() => handleIssueCode(m)} className="text-ncas-blue hover:underline text-xs font-medium disabled:opacity-50">{m.hasLogin ? 'Password reset code' : 'सक्रियता code'}</button>}
+                        {isSupabaseConfigured && <button disabled={codeBusy} onClick={() => handleIssueCode(m)} className="text-ncas-blue hover:underline text-xs font-medium disabled:opacity-50">{m.hasLogin ? 'Reset SMS' : 'सक्रियता SMS'}</button>}
                         <button onClick={() => openView(m)} className="text-ncas-blue hover:underline text-xs font-medium">हेर्नुहोस्</button>
                         <button onClick={() => openEdit(m)} className="text-ncas-gold hover:underline text-xs font-medium">सम्पादन</button>
                         {canRemove && <button onClick={() => handleDelete(m)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>}
@@ -226,7 +242,7 @@ export default function Members() {
       </div>
 
       <Modal open={modalMode === 'add' || modalMode === 'edit'} onClose={closeModal} title={modalMode === 'add' ? 'नयाँ सदस्य थप्नुहोस्' : 'सदस्य सम्पादन गर्नुहोस्'} wide>
-        <MemberForm initial={modalMode === 'edit' ? activeMember : null} onCancel={closeModal} onSubmit={handleSubmit} />
+        <MemberForm initial={modalMode === 'edit' ? activeMember : null} onCancel={closeModal} onSubmit={handleSubmit} isSaving={saveBusy} />
       </Modal>
 
       <Modal open={modalMode === 'view'} onClose={closeModal} title="सदस्य विवरण" wide>
@@ -270,13 +286,12 @@ export default function Members() {
         )}
       </Modal>
 
-      <Modal open={Boolean(codeResult)} onClose={() => setCodeResult(null)} title="एकपटकको सदस्य code">
+      <Modal open={Boolean(codeResult)} onClose={() => setCodeResult(null)} title="सदस्यलाई SMS पठाउने अनुरोध स्वीकारियो">
         {codeResult && (
           <div className="space-y-4 text-sm">
-            <p><strong>{codeResult.memberName}</strong> ({codeResult.membershipId}) लाई यो code निजी रूपमा दिनुहोस्।</p>
-            <p className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-center font-mono text-xl font-bold tracking-wider select-all">{codeResult.code}</p>
-            <p className="text-gray-600">७ दिनसम्म मात्र मान्य। एकपटक प्रयोगपछि वा ५ गलत प्रयासपछि बन्द हुन्छ। यो बन्द गरेपछि फेरि हेर्न मिल्दैन; आवश्यक परे नयाँ code बनाउनुहोस्।</p>
-            <p className="text-gray-600">सदस्यले “पहिलो password / बिर्सियो” मा आफ्नो ID, दर्ता फोन नम्बर र यो code राखेर नयाँ password बनाउँछन्।</p>
+            <p><strong>{codeResult.memberName}</strong> ({codeResult.membershipId}) को दर्ता मोबाइल (अन्तिम अंक {codeResult.phoneLast4}) मा code सहितको SMS AakashSMS ले स्वीकार गरेको छ।</p>
+            <p className="text-gray-600">SMS मोबाइलमा पुगेको पुष्टि भने सदस्य वा AakashSMS delivery report बाट गर्नुहोस्। Code ७ दिनसम्म, एकपटक प्रयोग वा ५ गलत प्रयासमध्ये जुन पहिले हुन्छ त्यतिन्जेल मान्य हुन्छ।</p>
+            <p className="text-gray-600">सदस्यले “पहिलो password / बिर्सियो” मा आफ्नो ID, दर्ता फोन नम्बर र SMS को code राखेर नयाँ password बनाउँछन्।</p>
             <button type="button" onClick={() => setCodeResult(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
           </div>
         )}

@@ -39,8 +39,9 @@ authenticated write-path verification remain necessary before real-data use.
 `20260923020000_member_activation.sql` adds admin-issued, single-use activation
 codes. It and the `ncas-member-admin` and `ncas-member-access` Edge Functions
 were applied to the same `ncas-website` project on 2026-09-23.
-The first function requires a signed-in System admin and returns a fresh code
-once; it invalidates an earlier code. The second verifies the member ID,
+The first function requires a signed-in System admin, sends a fresh code by SMS,
+and invalidates an earlier code; it never returns the code to the browser.
+The second verifies the member ID,
 registered phone number, and code before creating or resetting a member Auth
 account. It uses the project's server-provided secret key inside Supabase only;
 the browser never receives that key. Codes expire in seven days or after five
@@ -58,3 +59,18 @@ accessible based only on a client-supplied role. Do not deploy the frontend
 until both functions and the migration are working. Invalid member IDs were
 verified to return a generic 400 response; no production member account was
 created for testing.
+
+## AakashSMS onboarding and reset
+
+Set the `AAKASH_SMS_TOKEN` secret in the **ncas-website** project's Edge Function
+Secrets page. Do not put it in Vercel, the browser, Git, or support messages.
+The `ncas-member-admin` function posts the member ID and one-time code to
+AakashSMS using the registered ten-digit mobile number. It returns only a
+queued status and the last four digits of the destination, never the code.
+Adding a member automatically requests that SMS after the database insert.
+An admin can send a replacement activation or password-reset SMS from the
+member list. A provider rejection invalidates the freshly issued code and
+leaves the member record in place for a retry. Provider queue acceptance is
+not proof of handset delivery: check the AakashSMS delivery report if needed.
+The token requires SMS credit. Do not send a real test SMS to a third-party
+number without their consent.
