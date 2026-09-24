@@ -10,9 +10,15 @@ export async function sendActivationSms({ token, phone, membershipId, code, fetc
     signal: AbortSignal.timeout(15000),
   })
   let result
-  try { result = await response.json() } catch { return false }
-  return response.ok && result?.error === false &&
+  try { result = await response.json() } catch { return { queued: false, reason: 'invalid_response' } }
+  if (response.ok && result?.error === false &&
     Array.isArray(result?.data?.valid) && result.data.valid.length === 1 &&
-    result.data.valid[0]?.status === 'queued' &&
-    Array.isArray(result?.data?.invalid) && result.data.invalid.length === 0
+    result.data.valid[0]?.status === 'queued') {
+    return { queued: true }
+  }
+  const providerMessage = String(result?.message ?? '').toLowerCase()
+  if (providerMessage.includes('auth token') && providerMessage.includes('not valid')) return { queued: false, reason: 'invalid_token' }
+  if (providerMessage.includes('balance') || providerMessage.includes('credit')) return { queued: false, reason: 'insufficient_credit' }
+  if (Array.isArray(result?.data?.invalid) && result.data.invalid.length > 0) return { queued: false, reason: 'invalid_number' }
+  return { queued: false, reason: 'provider_rejected' }
 }

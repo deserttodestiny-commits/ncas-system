@@ -45,17 +45,25 @@ export default {
     })
     if (error) return Response.json({ error: 'Code बनाउन सकिएन।' }, { status: 503 })
 
-    let smsQueued = false
+    let smsResult: { queued: boolean; reason?: string } = { queued: false, reason: 'connection_failed' }
     try {
-      smsQueued = await sendActivationSms({
+      smsResult = await sendActivationSms({
         token: smsToken, phone, membershipId: member.membership_id, code,
       })
     } catch { /* A timeout or connection failure must not be reported as a sent SMS. */ }
-    if (!smsQueued) {
+    if (!smsResult.queued) {
       await ctx.supabaseAdmin.from('ncas_system_member_activations')
         .update({ consumed_at: new Date().toISOString() })
         .eq('member_id', member.id).eq('code_hash', codeHash)
-      return Response.json({ error: 'SMS पठाउन सकिएन। AakashSMS token, credit र फोन नम्बर जाँचेर फेरि प्रयास गर्नुहोस्।' }, { status: 502 })
+      const explanations: Record<string, string> = {
+        invalid_token: 'AakashSMS token मान्य छैन। Supabase secret जाँच्नुहोस्।',
+        insufficient_credit: 'AakashSMS खातामा पर्याप्त SMS credit छैन।',
+        invalid_number: 'AakashSMS ले सदस्यको फोन नम्बर अमान्य भनेको छ।',
+        invalid_response: 'AakashSMS बाट अमान्य प्रतिक्रिया आयो।',
+        connection_failed: 'AakashSMS सेवासँग सम्पर्क हुन सकेन।',
+        provider_rejected: 'AakashSMS ले सन्देश स्वीकार गरेन। खाता र SMS report जाँच्नुहोस्।',
+      }
+      return Response.json({ error: explanations[smsResult.reason ?? ''] ?? explanations.provider_rejected }, { status: 502 })
     }
     return Response.json({ smsQueued: true, expiresAt, phoneLast4: phone.slice(-4) })
   }),
