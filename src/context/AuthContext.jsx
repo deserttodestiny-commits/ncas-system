@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { load, save } from '../data/storage'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { memberPasswordSession } from '../lib/memberAccess'
 
 const AuthContext = createContext(null)
 const demoMode = import.meta.env.DEV && !isSupabaseConfigured
@@ -83,12 +84,22 @@ export function AuthProvider({ children }) {
     return signIn(email, password, 'admin')
   }
 
-  const loginMember = async (email, password) => {
+  const loginMember = async (memberId, password) => {
     if (demoMode) {
-      setSession({ role: 'member', membershipId: email })
+      setSession({ role: 'member', membershipId: memberId })
       return
     }
-    return signIn(email, password, 'member')
+    if (!isSupabaseConfigured) throw new Error('Supabase जडान भएको छैन।')
+    const tokens = await memberPasswordSession(memberId.trim(), password)
+    const { data, error } = await supabase.auth.setSession(tokens)
+    if (error) throw error
+    const resolved = await resolveCloudSession(data.user)
+    if (!resolved || resolved.role !== 'member' || resolved.membershipId.toUpperCase() !== memberId.trim().toUpperCase()) {
+      await supabase.auth.signOut()
+      throw new Error('यस सदस्य आइडीलाई अनुमति छैन।')
+    }
+    setSession(resolved)
+    return resolved
   }
 
   const logout = async () => {

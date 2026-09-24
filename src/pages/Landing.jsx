@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useUi } from '../context/UiContext'
 import { load } from '../data/storage'
 import { isSupabaseConfigured } from '../lib/supabase'
+import { activateMember } from '../lib/memberAccess'
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -14,6 +15,10 @@ export default function Landing() {
   const [password, setPassword] = useState('')
   const [memberId, setMemberId] = useState('')
   const [memberPhone, setMemberPhone] = useState('')
+  const [memberCode, setMemberCode] = useState('')
+  const [memberPassword, setMemberPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [memberMode, setMemberMode] = useState('login')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -26,10 +31,30 @@ export default function Landing() {
     setSubmitting(true)
     try {
       if (portal === 'admin') await loginAdmin(email, password)
-      else await loginMember(email, password)
+      else await loginMember(memberId, password)
       navigate(portal === 'admin' ? '/admin' : '/member', { replace: true })
     } catch (error) {
       toast(error.message || 'लगइन हुन सकेन।', 'error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleActivation = async (event) => {
+    event.preventDefault()
+    if (memberPassword !== confirmPassword) return toast('नयाँ password दुई ठाउँमा मिलेन।', 'error')
+    if (memberPassword.length < 12) return toast('नयाँ password कम्तीमा १२ अक्षरको राख्नुहोस्।', 'error')
+    setSubmitting(true)
+    try {
+      await activateMember({ memberId: memberId.trim(), phone: memberPhone.trim(), code: memberCode.trim(), password: memberPassword })
+      setPassword('')
+      setMemberPassword('')
+      setConfirmPassword('')
+      setMemberCode('')
+      setMemberMode('login')
+      toast('नयाँ password तयार भयो। अब सदस्य ID र यही password बाट लगइन गर्नुहोस्।', 'success')
+    } catch (error) {
+      toast(error.message || 'खाता सक्रिय हुन सकेन।', 'error')
     } finally {
       setSubmitting(false)
     }
@@ -68,23 +93,57 @@ export default function Landing() {
           <section className="max-w-md mx-auto bg-white rounded-xl shadow-md p-7 border-t-4 border-ncas-gold">
             <h2 className="text-xl font-bold text-ncas-dark text-center mb-5">सुरक्षित लगइन</h2>
             <div className="grid grid-cols-2 gap-2 mb-6" role="group" aria-label="पोर्टल छान्नुहोस्">
-              <button type="button" onClick={() => setPortal('admin')} aria-pressed={portal === 'admin'} className={`rounded-lg px-4 py-3 font-semibold ${portal === 'admin' ? 'bg-ncas-dark text-white' : 'bg-gray-100 text-gray-600'}`}>Admin</button>
-              <button type="button" onClick={() => setPortal('member')} aria-pressed={portal === 'member'} className={`rounded-lg px-4 py-3 font-semibold ${portal === 'member' ? 'bg-ncas-dark text-white' : 'bg-gray-100 text-gray-600'}`}>सदस्य</button>
+              <button type="button" onClick={() => { setPortal('admin'); setPassword('') }} aria-pressed={portal === 'admin'} className={`rounded-lg px-4 py-3 font-semibold ${portal === 'admin' ? 'bg-ncas-dark text-white' : 'bg-gray-100 text-gray-600'}`}>Admin</button>
+              <button type="button" onClick={() => { setPortal('member'); setPassword('') }} aria-pressed={portal === 'member'} className={`rounded-lg px-4 py-3 font-semibold ${portal === 'member' ? 'bg-ncas-dark text-white' : 'bg-gray-100 text-gray-600'}`}>सदस्य</button>
             </div>
-            <form onSubmit={handleCloudLogin} className="space-y-4">
-              <div>
-                <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input id="login-email" type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            {portal === 'member' && (
+              <div className="grid grid-cols-2 gap-2 mb-5 text-sm" role="group" aria-label="सदस्य खाता विकल्प">
+                <button type="button" onClick={() => { setMemberMode('login'); setPassword('') }} aria-pressed={memberMode === 'login'} className={`rounded-lg p-2 ${memberMode === 'login' ? 'bg-blue-100 text-ncas-dark font-semibold' : 'bg-gray-50 text-gray-600'}`}>लगइन</button>
+                <button type="button" onClick={() => { setMemberMode('activate'); setPassword('') }} aria-pressed={memberMode === 'activate'} className={`rounded-lg p-2 ${memberMode === 'activate' ? 'bg-blue-100 text-ncas-dark font-semibold' : 'bg-gray-50 text-gray-600'}`}>पहिलो password / बिर्सियो</button>
               </div>
-              <div>
-                <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
-              </div>
+            )}
+            <form onSubmit={portal === 'member' && memberMode === 'activate' ? handleActivation : handleCloudLogin} className="space-y-4">
+              {portal === 'admin' ? (
+                <div>
+                  <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">Admin Email</label>
+                  <input id="login-email" type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                </div>
+              ) : (
+                <div>
+                  <label htmlFor="member-id" className="block text-sm font-medium text-gray-700 mb-1">सदस्य ID</label>
+                  <input id="member-id" autoComplete="username" required value={memberId} onChange={(event) => setMemberId(event.target.value)} placeholder="NCAS-2083-00001" className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                </div>
+              )}
+              {portal === 'member' && memberMode === 'activate' ? (
+                <>
+                  <div>
+                    <label htmlFor="member-phone" className="block text-sm font-medium text-gray-700 mb-1">दर्ता भएको फोन नम्बर (पहिलो पहिचान)</label>
+                    <input id="member-phone" type="tel" autoComplete="tel" required value={memberPhone} onChange={(event) => setMemberPhone(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  </div>
+                  <div>
+                    <label htmlFor="member-code" className="block text-sm font-medium text-gray-700 mb-1">Admin ले दिएको सक्रियता code</label>
+                    <input id="member-code" required value={memberCode} onChange={(event) => setMemberCode(event.target.value)} placeholder="XXXX-XXXX-XXXX" className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  </div>
+                  <div>
+                    <label htmlFor="member-new-password" className="block text-sm font-medium text-gray-700 mb-1">नयाँ password (कम्तीमा १२ अक्षर)</label>
+                    <input id="member-new-password" type="password" autoComplete="new-password" required minLength={12} value={memberPassword} onChange={(event) => setMemberPassword(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  </div>
+                  <div>
+                    <label htmlFor="member-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">नयाँ password दोहोर्याउनुहोस्</label>
+                    <input id="member-confirm-password" type="password" autoComplete="new-password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                </div>
+              )}
               <button type="submit" disabled={submitting} className="w-full rounded-lg bg-ncas-dark text-white font-semibold py-3 disabled:opacity-50">
-                {submitting ? 'लगइन हुँदैछ...' : portal === 'admin' ? 'Admin लगइन' : 'सदस्य लगइन'}
+                {submitting ? 'कृपया पर्खनुहोस्...' : portal === 'admin' ? 'Admin लगइन' : memberMode === 'activate' ? 'नयाँ password बनाउनुहोस्' : 'सदस्य लगइन'}
               </button>
             </form>
-            <p className="text-xs text-gray-500 mt-4 text-center">सदस्य खाताका लागि संघबाट अनुमति पाएको email र password प्रयोग गर्नुहोस्। सदस्यता आइडी वा फोन नम्बर मात्रै लगइन होइन।</p>
+            {portal === 'member' && <p className="text-xs text-gray-500 mt-4 text-center">पहिलो पटक वा password बिर्सिँदा admin बाट एकपटकको code लिनुहोस्। त्यसपछि ID र आफ्नै password मात्र चाहिन्छ।</p>}
           </section>
         ) : demoMode ? (
           <div className="grid md:grid-cols-2 gap-6">

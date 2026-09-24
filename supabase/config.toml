@@ -1,0 +1,5 @@
+[functions.ncas-member-access]
+verify_jwt = false
+
+[functions.ncas-member-admin]
+verify_jwt = true
