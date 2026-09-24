@@ -26,3 +26,7 @@ export async function activateMember({ memberId, phone, code, password }) {
 export async function issueMemberCode(memberId) {
   return invoke('ncas-member-admin', { memberId })
 }
+
+export async function checkMemberSmsGateway() {
+  return invoke('ncas-member-admin', { action: 'diagnose' })
+}

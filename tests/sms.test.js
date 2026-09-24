@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { sendActivationSms } from '../supabase/functions/ncas-member-admin/sms.js'
+import { checkSmsCredit, sendActivationSms } from '../supabase/functions/ncas-member-admin/sms.js'
 
 test('sends one code to the registered mobile using a POST body', async () => {
   let request
@@ -74,4 +74,29 @@ test('recognizes an invalid provider token without exposing it', async () => {
     }),
   })
   assert.deepEqual(result, { queued: false, reason: 'invalid_token' })
+})
+
+test('checks API credit without sending an SMS or exposing the token in the URL', async () => {
+  let request
+  const result = await checkSmsCredit({
+    token: 'test-token',
+    fetchImpl: async (url, options) => {
+      request = { url, options }
+      return { ok: true, json: async () => ({ available_credit: 1914, response_code: 202 }) }
+    },
+  })
+  assert.deepEqual(result, { ready: true, credit: 1914 })
+  assert.equal(request.url, 'https://sms.aakashsms.com/sms/v1/credit')
+  assert.equal(request.options.method, 'POST')
+  assert.equal(request.options.body.get('auth_token'), 'test-token')
+  assert.ok(!request.url.includes('test-token'))
+  assert.equal(request.options.body.has('to'), false)
+})
+
+test('credit check reports an invalid token without leaking it', async () => {
+  const result = await checkSmsCredit({
+    token: 'test-token',
+    fetchImpl: async () => ({ ok: true, json: async () => ({ error: true, message: 'The provided Auth Token is not valid.' }) }),
+  })
+  assert.deepEqual(result, { ready: false, reason: 'invalid_token' })
 })

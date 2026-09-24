@@ -13,7 +13,7 @@ import StatusBadge from '../../components/StatusBadge'
 import Avatar from '../../components/Avatar'
 import MemberForm from './MemberForm'
 import { isSupabaseConfigured } from '../../lib/supabase'
-import { issueMemberCode } from '../../lib/memberAccess'
+import { checkMemberSmsGateway, issueMemberCode } from '../../lib/memberAccess'
 
 function toCsvValue(v) {
   const s = Array.isArray(v) ? v.join('; ') : String(v ?? '')
@@ -36,6 +36,9 @@ export default function Members() {
   const [modalMode, setModalMode] = useState(null) // 'add' | 'edit' | 'view'
   const [activeMember, setActiveMember] = useState(null)
   const [codeResult, setCodeResult] = useState(null)
+  const [codeError, setCodeError] = useState(null)
+  const [smsStatus, setSmsStatus] = useState(null)
+  const [smsStatusBusy, setSmsStatusBusy] = useState(false)
   const [codeBusy, setCodeBusy] = useState(false)
   const [saveBusy, setSaveBusy] = useState(false)
 
@@ -71,6 +74,7 @@ export default function Members() {
             setCodeResult({ ...result, memberName: added.fullName, membershipId: added.membershipId })
             toast('सदस्य थपियो र सक्रियता SMS पठाउने अनुरोध स्वीकारियो।')
           } catch (error) {
+            setCodeError(`सदस्य थपियो, तर सक्रियता SMS गएन: ${error.message}`)
             toast(`सदस्य थपियो, तर SMS गएन: ${error.message} सदस्यको Login बटनबाट फेरि पठाउनुहोस्।`, 'error')
           }
         } else {
@@ -112,9 +116,23 @@ export default function Members() {
       const result = await issueMemberCode(m.id)
       setCodeResult({ ...result, memberName: m.fullName, membershipId: m.membershipId })
     } catch (error) {
+      setCodeError(error.message || 'SMS पठाउन सकिएन।')
       toast(error.message || 'SMS पठाउन सकिएन।', 'error')
     } finally {
       setCodeBusy(false)
+    }
+  }
+
+  const handleSmsStatus = async () => {
+    if (smsStatusBusy) return
+    setSmsStatusBusy(true)
+    try {
+      const result = await checkMemberSmsGateway()
+      setSmsStatus({ ok: true, message: `AakashSMS token मान्य छ। बाँकी API SMS credit: ${result.credit}। यो जाँचले SMS पठाएको छैन।` })
+    } catch (error) {
+      setSmsStatus({ ok: false, message: `${error.message} यो जाँचले SMS पठाएको छैन।` })
+    } finally {
+      setSmsStatusBusy(false)
     }
   }
 
@@ -151,6 +169,7 @@ export default function Members() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-ncas-dark">सदस्य व्यवस्थापन</h1>
         <div className="flex flex-wrap gap-2">
+          {isSupabaseConfigured && <button disabled={smsStatusBusy} onClick={handleSmsStatus} className="px-4 py-2 rounded-lg border border-ncas-blue text-ncas-blue text-sm font-medium disabled:opacity-50">{smsStatusBusy ? 'SMS सेवा जाँचिँदैछ…' : 'SMS सेवा जाँच'}</button>}
           <button onClick={() => toast('SMS सुविधा छिट्टै आउँदैछ!', 'info')} className="px-4 py-2 rounded-lg bg-ncas-blue text-white text-sm font-medium hover:opacity-90">
             📩 Bulk SMS
           </button>
@@ -295,6 +314,21 @@ export default function Members() {
             <button type="button" onClick={() => setCodeResult(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
           </div>
         )}
+      </Modal>
+
+      <Modal open={Boolean(codeError)} onClose={() => setCodeError(null)} title="SMS पठाउन सकिएन">
+        {codeError && <div className="space-y-4 text-sm">
+          <p className="text-red-700">{codeError}</p>
+          <p className="text-gray-600">यो त्रुटि बन्द गरेपछि सदस्य विवरण सुरक्षित रहन्छ। समस्या मिलाएपछि मात्र नयाँ SMS पठाउनुहोस्।</p>
+          <button type="button" onClick={() => setCodeError(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
+        </div>}
+      </Modal>
+
+      <Modal open={Boolean(smsStatus)} onClose={() => setSmsStatus(null)} title="SMS सेवा जाँच">
+        {smsStatus && <div className="space-y-4 text-sm">
+          <p className={smsStatus.ok ? 'text-green-800' : 'text-red-700'}>{smsStatus.message}</p>
+          <button type="button" onClick={() => setSmsStatus(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
+        </div>}
       </Modal>
     </div>
   )
