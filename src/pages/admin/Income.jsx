@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useCollection } from '../../data/useCollection'
-import { INCOME_CATEGORIES } from '../../data/districts'
+import { INCOME_CATEGORIES, MEMBERSHIP_RENEWAL_CATEGORY } from '../../data/districts'
+import { isMembershipRenewal } from '../../data/membershipPayment'
 import { formatNPR, uid } from '../../data/storage'
 import { monthlyTotalsBs } from '../../data/helpers'
 import {
@@ -33,6 +34,7 @@ export default function Income() {
   const { toast, confirm } = useUi()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [saving, setSaving] = useState(false)
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
@@ -48,6 +50,15 @@ export default function Income() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (saving) return
+    if (form.category === MEMBERSHIP_RENEWAL_CATEGORY && !form.memberId) {
+      toast('सदस्यता शुल्क/नवीकरणको लागि सदस्य छान्नुहोस्।', 'error')
+      return
+    }
+    if (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0) {
+      toast('रकम शून्यभन्दा बढी हुनुपर्छ।', 'error')
+      return
+    }
     const entry = {
       id: uid(),
       ...form,
@@ -56,21 +67,28 @@ export default function Income() {
       memberId: form.memberId || null,
       bsKey: bsMonthKeyForAdDate(form.date),
     }
+    setSaving(true)
     try {
       await addItem(entry)
-      if (entry.memberId) {
+      setForm(emptyForm)
+      setOpen(false)
+      if (isMembershipRenewal(entry)) {
         const member = members.find((m) => m.id === entry.memberId)
         if (member) {
           const newPaidThrough = Math.max(Number(member.paidThroughFiscalYear) || 0, entry.fiscalYear)
-          if (isSupabaseConfigured) await refreshMembers()
-          else await updateMember(member.id, { paidThroughFiscalYear: newPaidThrough })
-          toast(`आम्दानी थपियो — ${member.fullName} को सदस्यता आ.व. ${fiscalYearLabel(fiscalYearFromEndYear(newPaidThrough))} सम्म नवीकरण भयो`)
+          try {
+            if (isSupabaseConfigured) await refreshMembers()
+            else await updateMember(member.id, { paidThroughFiscalYear: newPaidThrough })
+            toast(`आम्दानी थपियो — ${member.fullName} को सदस्यता आ.व. ${fiscalYearLabel(fiscalYearFromEndYear(newPaidThrough))} सम्म नवीकरण भयो`)
+          } catch {
+            toast('आम्दानी सुरक्षित भयो, तर सदस्यता सूची फेरि लोड गर्न सकिएन। फेरि आम्दानी नथप्नुहोस्; पृष्ठ पुनः खोल्नुहोस्।', 'error')
+          }
         } else toast('आम्दानी थपियो')
       } else toast('आम्दानी थपियो')
-      setForm(emptyForm)
-      setOpen(false)
     } catch (error) {
-      toast(`आम्दानी सुरक्षित भएन वा सदस्यता अद्यावधिक भएन: ${error.message}`, 'error')
+      toast(`आम्दानी सुरक्षित भएन: ${error.message}`, 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -164,15 +182,16 @@ export default function Income() {
             <select value={form.category} onChange={set('category')} className="w-full border border-gray-300 rounded-lg px-3 py-2">
               {INCOME_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
             </select>
+            <p className="text-xs text-gray-500 mt-1">सदस्यता म्याद “सदस्यता शुल्क/नवीकरण” श्रेणीमा रकम दर्ता गर्दा मात्र बढ्छ।</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">सम्बन्धित सदस्य (वैकल्पिक)</label>
-            <select value={form.memberId} onChange={handleMemberSelect} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">सम्बन्धित सदस्य {form.category === MEMBERSHIP_RENEWAL_CATEGORY ? '*' : '(वैकल्पिक)'}</label>
+            <select required={form.category === MEMBERSHIP_RENEWAL_CATEGORY} value={form.memberId} onChange={handleMemberSelect} className="w-full border border-gray-300 rounded-lg px-3 py-2">
               <option value="">— कुनै सदस्यसँग सम्बन्धित छैन —</option>
               {members.map((m) => <option key={m.id} value={m.id}>{m.membershipId} — {m.fullName}</option>)}
             </select>
           </div>
-          {form.memberId && (
+          {form.category === MEMBERSHIP_RENEWAL_CATEGORY && form.memberId && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">यो भुक्तानी कुन आ.व. को लागि हो?</label>
               <FiscalYearSelect value={form.fiscalYear} onChange={(endYear) => setForm((f) => ({ ...f, fiscalYear: endYear }))} />
@@ -185,7 +204,7 @@ export default function Income() {
           )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">रकम (रु.)</label>
-            <input type="number" min="0" required value={form.amount} onChange={set('amount')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            <input type="number" min="0.01" step="0.01" required value={form.amount} onChange={set('amount')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">विवरण</label>
@@ -196,8 +215,8 @@ export default function Income() {
             <input value={form.receivedFrom} onChange={set('receivedFrom')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">रद्द गर्नुहोस्</button>
-            <button type="submit" className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90">सुरक्षित गर्नुहोस्</button>
+            <button type="button" disabled={saving} onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium disabled:opacity-50">रद्द गर्नुहोस्</button>
+            <button type="submit" disabled={saving} className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90 disabled:opacity-50">{saving ? 'सुरक्षित हुँदैछ…' : 'सुरक्षित गर्नुहोस्'}</button>
           </div>
         </form>
       </Modal>

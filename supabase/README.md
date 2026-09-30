@@ -1,13 +1,17 @@
 # NCAS System database setup
 
 The migrations in this folder were applied to the existing NCAS-owned
-`ncas-website` Supabase project (`kxnjilquajxcqhujzghn`) on 2026-09-23. Do not
+`ncas-website` Supabase project (`kxnjilquajxcqhujzghn`). Do not
 run them against `supabase-charcoal-horizon` or any other project. No demo rows
 were added; all System tables use the `ncas_system_*` prefix.
 
 `20260923000000_initial_schema.sql` creates access-controlled tables and the role
-RPC. `20260923010000_membership_renewal.sql` atomically updates a member's
-paid-through fiscal year when an authorized income entry is inserted.
+RPC. `20260923010000_membership_renewal.sql` originally updated a member's
+paid-through fiscal year for linked income. The 2026-09-30 migration
+`20260930000000_membership_renewal_category.sql` restricts that update to the
+explicit `सदस्यता शुल्क/नवीकरण` category, so donations and other income cannot
+renew membership. It also requires a member and fiscal year for that category.
+The migration was applied and verified on 2026-09-30 with zero income rows.
 
 ## Roles and initial access
 
