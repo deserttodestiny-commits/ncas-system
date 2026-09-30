@@ -25,9 +25,11 @@ export const PAYMENT_STATUSES = ['Paid', 'Pending', 'Overdue']
 
 export const MEMBERSHIP_RENEWAL_CATEGORY = 'सदस्यता शुल्क/नवीकरण'
 
+export const CONTRIBUTION_CATEGORIES = ['चन्दा', 'दान/सहयोग', 'भलाई कोष सहयोग', 'अन्य सहयोग']
+
 export const INCOME_CATEGORIES = [
-  'केन्द्रीय कार्यालय आम्दानी', MEMBERSHIP_RENEWAL_CATEGORY, 'दान/सहयोग', 'व्यवसाय दर्ता तथा नवीकरण',
-  'जिल्लाबाट प्राप्त आम्दानी', 'परिचयपत्र मुद्रण',
+  'केन्द्रीय कार्यालय आम्दानी', MEMBERSHIP_RENEWAL_CATEGORY, ...CONTRIBUTION_CATEGORIES,
+  'व्यवसाय दर्ता तथा नवीकरण', 'जिल्लाबाट प्राप्त आम्दानी', 'परिचयपत्र मुद्रण',
 ]
 
 export const EXPENSE_CATEGORIES = [
