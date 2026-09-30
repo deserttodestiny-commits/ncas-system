@@ -15,6 +15,7 @@ export default function Expenses() {
   const { toast, confirm } = useUi()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [saving, setSaving] = useState(false)
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
@@ -23,6 +24,12 @@ export default function Expenses() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (saving) return
+    if (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0) {
+      toast('रकम शून्यभन्दा बढी हुनुपर्छ।', 'error')
+      return
+    }
+    setSaving(true)
     try {
       await addItem({ id: uid(), ...form, amount: Number(form.amount) || 0, bsKey: bsMonthKeyForAdDate(form.date) })
       toast('खर्च थपियो')
@@ -30,6 +37,8 @@ export default function Expenses() {
       setOpen(false)
     } catch (error) {
       toast(`खर्च सुरक्षित भएन: ${error.message}`, 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -108,7 +117,7 @@ export default function Expenses() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">रकम (रु.)</label>
-            <input type="number" min="0" required value={form.amount} onChange={set('amount')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            <input type="number" min="0.01" step="0.01" required value={form.amount} onChange={set('amount')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">विवरण</label>
@@ -119,8 +128,8 @@ export default function Expenses() {
             <input value={form.paidTo} onChange={set('paidTo')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">रद्द गर्नुहोस्</button>
-            <button type="submit" className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90">सुरक्षित गर्नुहोस्</button>
+            <button type="button" disabled={saving} onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium disabled:opacity-50">रद्द गर्नुहोस्</button>
+            <button type="submit" disabled={saving} className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90 disabled:opacity-50">{saving ? 'सुरक्षित हुँदैछ…' : 'सुरक्षित गर्नुहोस्'}</button>
           </div>
         </form>
       </Modal>
