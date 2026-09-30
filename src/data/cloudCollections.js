@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { collectCursorPages } from './pagedRows'
 
 const TABLES = {
   members: 'ncas_system_members',
@@ -106,9 +107,14 @@ export function toRow(key, item) {
 }
 
 export async function listCloudItems(key) {
-  const { data, error } = await supabase.from(TABLES[key]).select('*')
-  if (error) throw error
-  return data.map((row) => fromRow(key, row))
+  const rows = await collectCursorPages(async (lastId) => {
+    let query = supabase.from(TABLES[key]).select('*').order('id', { ascending: true }).limit(500)
+    if (lastId) query = query.gt('id', lastId)
+    const { data, error } = await query
+    if (error) throw error
+    return data || []
+  })
+  return rows.map((row) => fromRow(key, row))
 }
 
 export async function addCloudItem(key, item) {
