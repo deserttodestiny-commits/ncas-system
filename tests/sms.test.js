@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { checkSmsCredit, sendActivationSms } from '../supabase/functions/ncas-member-admin/sms.js'
+import { checkSmsCredit, probeAakashHost, probeAakashPost, sendActivationSms } from '../supabase/functions/ncas-member-admin/sms.js'
 
 test('sends one code to the registered mobile using a POST body', async () => {
   let request
@@ -99,4 +99,37 @@ test('credit check reports an invalid token without leaking it', async () => {
     fetchImpl: async () => ({ ok: true, json: async () => ({ error: true, message: 'The provided Auth Token is not valid.' }) }),
   })
   assert.deepEqual(result, { ready: false, reason: 'invalid_token' })
+})
+
+test('host probe never includes a token or sends an SMS', async () => {
+  let request
+  const result = await probeAakashHost({
+    fetchImpl: async (url, options) => {
+      request = { url, options }
+      return { status: 404 }
+    },
+  })
+  assert.deepEqual(result, { reachable: true, status: 404 })
+  assert.equal(request.url, 'https://sms.aakashsms.com/sms/v1/credit')
+  assert.equal(request.options.method, 'HEAD')
+  assert.equal(request.options.body, undefined)
+})
+
+test('host probe reports an unreachable server', async () => {
+  const result = await probeAakashHost({ fetchImpl: async () => { throw new Error('timed out') } })
+  assert.deepEqual(result, { reachable: false })
+})
+
+test('POST probe sends an empty form without token or SMS data', async () => {
+  let request
+  const result = await probeAakashPost({
+    fetchImpl: async (url, options) => {
+      request = { url, options }
+      return { status: 422 }
+    },
+  })
+  assert.deepEqual(result, { reachable: true, status: 422 })
+  assert.equal(request.url, 'https://sms.aakashsms.com/sms/v1/credit')
+  assert.equal(request.options.method, 'POST')
+  assert.equal(String(request.options.body), '')
 })

@@ -1,6 +1,34 @@
 const AAKASH_SEND_URL = 'https://sms.aakashsms.com/sms/v3/send'
 const AAKASH_CREDIT_URL = 'https://sms.aakashsms.com/sms/v1/credit'
 
+export async function probeAakashHost({ fetchImpl = fetch }) {
+  try {
+    // Any HTTP response proves the host is reachable; this request has no token or SMS data.
+    const response = await fetchImpl(AAKASH_CREDIT_URL, {
+      method: 'HEAD',
+      signal: AbortSignal.timeout(6000),
+    })
+    return { reachable: true, status: response.status }
+  } catch {
+    return { reachable: false }
+  }
+}
+
+export async function probeAakashPost({ fetchImpl = fetch }) {
+  try {
+    // Credit endpoint only: empty form, no secret, number, or message.
+    const response = await fetchImpl(AAKASH_CREDIT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(),
+      signal: AbortSignal.timeout(6000),
+    })
+    return { reachable: true, status: response.status }
+  } catch {
+    return { reachable: false }
+  }
+}
+
 export async function checkSmsCredit({ token, fetchImpl = fetch }) {
   const response = await fetchImpl(AAKASH_CREDIT_URL, {
     method: 'POST',
