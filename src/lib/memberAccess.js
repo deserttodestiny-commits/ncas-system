@@ -19,12 +19,8 @@ export async function memberPasswordSession(memberId, password) {
   return data.session
 }
 
-export async function activateMember({ memberId, phone, code, password }) {
-  return invoke('ncas-member-access', { action: 'activate', memberId, phone, code, password })
-}
-
-export async function issueMemberCode(memberId) {
-  return invoke('ncas-member-admin', { memberId })
+export async function resetMemberPassword(memberId) {
+  return invoke('ncas-member-admin', { action: 'reset-password', memberId })
 }
 
 export async function checkMemberSmsGateway() {

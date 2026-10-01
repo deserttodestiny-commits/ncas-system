@@ -17,9 +17,13 @@ Copy `.env.example` to `.env.local` to run locally. Run `npm install`, `npm run 
 
 The first System admin is `ncasnepal@gmail.com`, linked by Auth user ID in
 `ncas_system_admins`. The owner must use that account's existing Supabase password;
-there is no password in this repository. A member needs a Supabase Auth account
-explicitly linked to their member row. Adding a member record alone does not create
-login access.
+there is no password in this repository. Members use their membership ID as the
+login name and the registered ten-digit mobile number as the initial password.
+The member Auth account is created and linked on its first login. In Profile →
+Settings, a member can change the password by entering the current password.
+An admin can reset an existing member password to the registered mobile number.
+Membership ID + mobile number is a weak credential pair; avoid real sensitive
+records until the complete login and permissions flow has been verified.
 
 ## Important limits before real-data use
 
@@ -27,6 +31,6 @@ login access.
   sensitive production records until that check.
 - Membership invites/linking, audited finance corrections, backups, and private
   photo storage need a follow-up release. Browser delete of finance rows is disabled.
-- Online payment, SMS, and payment notifications are not active. Do not treat the
+- Online payment, automatic SMS, and payment notifications are not active. Do not treat the
   finance form as a payment gateway.
 - Access relies on Supabase RLS, not frontend route guards. See [supabase/](supabase/README.md).

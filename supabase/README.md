@@ -21,8 +21,9 @@ Supabase Auth user ID.
 
 Do not paste a password or service-role/secret key into this repository. Do not
 grant admin by user-editable metadata. A member account is linked by setting
-`ncas_system_members.auth_user_id` to its Auth user ID; membership number and phone alone
-are not authentication.
+`ncas_system_members.auth_user_id` to its Auth user ID. The requested initial
+credential is membership ID plus registered phone number; this is weaker than a
+private password because both values may be known to others.
 
 ## Permission model
 
@@ -40,41 +41,29 @@ authenticated write-path verification remain necessary before real-data use.
 
 ## Member ID login
 
-`20260923020000_member_activation.sql` adds admin-issued, single-use activation
-codes. It and the `ncas-member-admin` and `ncas-member-access` Edge Functions
-were applied to the same `ncas-website` project on 2026-09-23.
-The first function requires a signed-in System admin, sends a fresh code by SMS,
-and invalidates an earlier code; it never returns the code to the browser.
-The second verifies the member ID,
-registered phone number, and code before creating or resetting a member Auth
-account. It uses the project's server-provided secret key inside Supabase only;
-the browser never receives that key. Codes expire in seven days or after five
-incorrect guesses. The member then chooses a new password (minimum 12
-characters). A phone number is only an identity check during activation; it is
-never saved as a permanent Auth password. Subsequent login uses member ID and
-the chosen password, not email.
+The earlier `20260923020000_member_activation.sql` migration created a code
+table and protected the member ID after linking. The code table remains for
+compatibility but is not used by this login flow. The `ncas-member-access` Edge
+Function looks up a member by ID. On the first login attempt it creates a
+Supabase Auth account with the registered ten-digit phone as its initial
+password and links its Auth user ID to the member row. Password verification
+then runs through Supabase Auth. Later logins use the same member ID and the
+current password, which may have been changed in Profile → Settings. This
+function never returns the phone number to the browser.
 
 The public `ncas-member-access` function uses `auth: 'publishable'`; its
 `verify_jwt = false` setting is required to admit a signed-out first-time
 member. The wrapper still checks the publishable API key. The
 `ncas-member-admin` function keeps JWT verification on and checks
-`ncas_system_admins` before issuing a code. Never make its admin action
-accessible based only on a client-supplied role. Do not deploy the frontend
-until both functions and the migration are working. Invalid member IDs were
-verified to return a generic 400 response; no production member account was
-created for testing.
+`ncas_system_admins` before resetting a member password to the registered
+phone number. Never make its admin action accessible based only on a
+client-supplied role. Do not deploy the frontend until both functions are
+working. Test with a disposable member before inviting real members.
 
-## AakashSMS onboarding and reset
+## SMS status
 
-Set the `AAKASH_SMS_TOKEN` secret in the **ncas-website** project's Edge Function
-Secrets page. Do not put it in Vercel, the browser, Git, or support messages.
-The `ncas-member-admin` function posts the member ID and one-time code to
-AakashSMS using the registered ten-digit mobile number. It returns only a
-queued status and the last four digits of the destination, never the code.
-Adding a member automatically requests that SMS after the database insert.
-An admin can send a replacement activation or password-reset SMS from the
-member list. A provider rejection invalidates the freshly issued code and
-leaves the member record in place for a retry. Provider queue acceptance is
-not proof of handset delivery: check the AakashSMS delivery report if needed.
-The token requires SMS credit. Do not send a real test SMS to a third-party
-number without their consent.
+Automatic SMS is not part of the initial-password or reset flow. The previous
+AakashSMS diagnostic remains in the admin Edge Function, but the Member screen
+does not invoke it for login. An admin reset returns only the final four digits
+of the registered phone; no SMS is sent. Do not put `AAKASH_SMS_TOKEN` in Vercel,
+the browser, Git, or support messages.

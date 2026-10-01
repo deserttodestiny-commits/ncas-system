@@ -13,7 +13,7 @@ import StatusBadge from '../../components/StatusBadge'
 import Avatar from '../../components/Avatar'
 import MemberForm from './MemberForm'
 import { isSupabaseConfigured } from '../../lib/supabase'
-import { checkMemberSmsGateway, issueMemberCode } from '../../lib/memberAccess'
+import { resetMemberPassword } from '../../lib/memberAccess'
 
 function toCsvValue(v) {
   const s = Array.isArray(v) ? v.join('; ') : String(v ?? '')
@@ -35,11 +35,8 @@ export default function Members() {
 
   const [modalMode, setModalMode] = useState(null) // 'add' | 'edit' | 'view'
   const [activeMember, setActiveMember] = useState(null)
-  const [codeResult, setCodeResult] = useState(null)
-  const [codeError, setCodeError] = useState(null)
-  const [smsStatus, setSmsStatus] = useState(null)
-  const [smsStatusBusy, setSmsStatusBusy] = useState(false)
-  const [codeBusy, setCodeBusy] = useState(false)
+  const [resetResult, setResetResult] = useState(null)
+  const [resetBusy, setResetBusy] = useState(false)
   const [saveBusy, setSaveBusy] = useState(false)
 
   const filtered = useMemo(() => {
@@ -66,20 +63,9 @@ export default function Members() {
       if (modalMode === 'add') {
         const joinYear = adToBs(form.joinDate)?.year || getTodayBs().year
         const membershipId = nextMembershipId(members, joinYear)
-        const added = await addItem({ id: uid(), membershipId, ...form })
+        await addItem({ id: uid(), membershipId, ...form })
         closeModal()
-        if (isSupabaseConfigured) {
-          try {
-            const result = await issueMemberCode(added.id)
-            setCodeResult({ ...result, memberName: added.fullName, membershipId: added.membershipId })
-            toast('सदस्य थपियो र सक्रियता SMS पठाउने अनुरोध स्वीकारियो।')
-          } catch (error) {
-            setCodeError(`सदस्य थपियो, तर सक्रियता SMS गएन: ${error.message}`)
-            toast(`सदस्य थपियो, तर SMS गएन: ${error.message} सदस्यको Login बटनबाट फेरि पठाउनुहोस्।`, 'error')
-          }
-        } else {
-          toast('नयाँ सदस्य थपियो')
-        }
+        toast('सदस्य थपियो। सदस्य ID र दर्ता मोबाइल नम्बरबाट पहिलो login गर्न सकिन्छ।')
       } else if (modalMode === 'edit') {
         const newId = form.membershipId?.trim()
         if (!newId) return toast('सदस्यता आइडी खाली हुन सक्दैन', 'error')
@@ -108,31 +94,17 @@ export default function Members() {
     }
   }
 
-  const handleIssueCode = async (m) => {
-    const ok = await confirm(`${m.fullName} को दर्ता मोबाइलमा नयाँ ${m.hasLogin ? 'password reset' : 'सक्रियता'} code SMS पठाउने? यसले पुरानो प्रयोग नभएको code रद्द गर्छ र SMS credit खर्च हुन्छ।`)
+  const handleResetPassword = async (m) => {
+    const ok = await confirm(`${m.fullName} को password दर्ता भएको मोबाइल नम्बरमा रिसेट गर्ने? यसपछि पुरानो password काम गर्दैन। सदस्यलाई नयाँ अस्थायी password सुरक्षित रूपमा जानकारी दिनुहोस्।`)
     if (!ok) return
-    setCodeBusy(true)
+    setResetBusy(true)
     try {
-      const result = await issueMemberCode(m.id)
-      setCodeResult({ ...result, memberName: m.fullName, membershipId: m.membershipId })
+      const result = await resetMemberPassword(m.id)
+      setResetResult({ ...result, memberName: m.fullName })
     } catch (error) {
-      setCodeError(error.message || 'SMS पठाउन सकिएन।')
-      toast(error.message || 'SMS पठाउन सकिएन।', 'error')
+      toast(error.message || 'Password रिसेट हुन सकेन।', 'error')
     } finally {
-      setCodeBusy(false)
-    }
-  }
-
-  const handleSmsStatus = async () => {
-    if (smsStatusBusy) return
-    setSmsStatusBusy(true)
-    try {
-      const result = await checkMemberSmsGateway()
-      setSmsStatus({ ok: true, message: `AakashSMS token मान्य छ। बाँकी API SMS credit: ${result.credit}। यो जाँचले SMS पठाएको छैन।` })
-    } catch (error) {
-      setSmsStatus({ ok: false, message: `${error.message} यो जाँचले SMS पठाएको छैन।` })
-    } finally {
-      setSmsStatusBusy(false)
+      setResetBusy(false)
     }
   }
 
@@ -169,7 +141,6 @@ export default function Members() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-ncas-dark">सदस्य व्यवस्थापन</h1>
         <div className="flex flex-wrap gap-2">
-          {isSupabaseConfigured && <button disabled={smsStatusBusy} onClick={handleSmsStatus} className="px-4 py-2 rounded-lg border border-ncas-blue text-ncas-blue text-sm font-medium disabled:opacity-50">{smsStatusBusy ? 'SMS सेवा जाँचिँदैछ…' : 'SMS सेवा जाँच'}</button>}
           <button onClick={() => toast('SMS सुविधा छिट्टै आउँदैछ!', 'info')} className="px-4 py-2 rounded-lg bg-ncas-blue text-white text-sm font-medium hover:opacity-90">
             📩 Bulk SMS
           </button>
@@ -241,10 +212,10 @@ export default function Members() {
                       {m.paidThroughFiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(m.paidThroughFiscalYear)) : '-'}
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={getMemberPaymentStatus(m.paidThroughFiscalYear)} /></td>
-                    {isSupabaseConfigured && <td className="px-4 py-3 text-gray-600">{m.hasLogin ? 'सक्रिय' : 'बाँकी'}</td>}
+                    {isSupabaseConfigured && <td className="px-4 py-3 text-gray-600">{m.hasLogin ? 'खाता बनेको' : 'पहिलो login बाँकी'}</td>}
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        {isSupabaseConfigured && <button disabled={codeBusy} onClick={() => handleIssueCode(m)} className="text-ncas-blue hover:underline text-xs font-medium disabled:opacity-50">{m.hasLogin ? 'Reset SMS' : 'सक्रियता SMS'}</button>}
+                        {isSupabaseConfigured && m.hasLogin && <button disabled={resetBusy} onClick={() => handleResetPassword(m)} className="text-ncas-blue hover:underline text-xs font-medium disabled:opacity-50">Password रिसेट</button>}
                         <button onClick={() => openView(m)} className="text-ncas-blue hover:underline text-xs font-medium">हेर्नुहोस्</button>
                         <button onClick={() => openEdit(m)} className="text-ncas-gold hover:underline text-xs font-medium">सम्पादन</button>
                         {canRemove && <button onClick={() => handleDelete(m)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>}
@@ -305,30 +276,14 @@ export default function Members() {
         )}
       </Modal>
 
-      <Modal open={Boolean(codeResult)} onClose={() => setCodeResult(null)} title="सदस्यलाई SMS पठाउने अनुरोध स्वीकारियो">
-        {codeResult && (
+      <Modal open={Boolean(resetResult)} onClose={() => setResetResult(null)} title="Password रिसेट भयो">
+        {resetResult && (
           <div className="space-y-4 text-sm">
-            <p><strong>{codeResult.memberName}</strong> ({codeResult.membershipId}) को दर्ता मोबाइल (अन्तिम अंक {codeResult.phoneLast4}) मा code सहितको SMS AakashSMS ले स्वीकार गरेको छ।</p>
-            <p className="text-gray-600">SMS मोबाइलमा पुगेको पुष्टि भने सदस्य वा AakashSMS delivery report बाट गर्नुहोस्। Code ७ दिनसम्म, एकपटक प्रयोग वा ५ गलत प्रयासमध्ये जुन पहिले हुन्छ त्यतिन्जेल मान्य हुन्छ।</p>
-            <p className="text-gray-600">सदस्यले “पहिलो password / बिर्सियो” मा आफ्नो ID, दर्ता फोन नम्बर र SMS को code राखेर नयाँ password बनाउँछन्।</p>
-            <button type="button" onClick={() => setCodeResult(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
+            <p><strong>{resetResult.memberName}</strong> ({resetResult.membershipId}) को password दर्ता मोबाइल नम्बर (अन्तिम अंक {resetResult.phoneLast4}) मा रिसेट भयो।</p>
+            <p className="text-gray-600">कुनै SMS पठाइएको छैन। सदस्यलाई सुरक्षित माध्यमबाट जानकारी दिनुहोस् र Profile → Settings मा नयाँ password राख्न सम्झाउनुहोस्।</p>
+            <button type="button" onClick={() => setResetResult(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
           </div>
         )}
-      </Modal>
-
-      <Modal open={Boolean(codeError)} onClose={() => setCodeError(null)} title="SMS पठाउन सकिएन">
-        {codeError && <div className="space-y-4 text-sm">
-          <p className="text-red-700">{codeError}</p>
-          <p className="text-gray-600">यो त्रुटि बन्द गरेपछि सदस्य विवरण सुरक्षित रहन्छ। समस्या मिलाएपछि मात्र नयाँ SMS पठाउनुहोस्।</p>
-          <button type="button" onClick={() => setCodeError(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
-        </div>}
-      </Modal>
-
-      <Modal open={Boolean(smsStatus)} onClose={() => setSmsStatus(null)} title="SMS सेवा जाँच">
-        {smsStatus && <div className="space-y-4 text-sm">
-          <p className={smsStatus.ok ? 'text-green-800' : 'text-red-700'}>{smsStatus.message}</p>
-          <button type="button" onClick={() => setSmsStatus(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
-        </div>}
       </Modal>
     </div>
   )

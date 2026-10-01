@@ -1,21 +1,7 @@
 import { withSupabase } from 'npm:@supabase/server@^1'
+import { ensureMemberAuthAccount, memberAlias } from './account.js'
 
-const INVALID = 'सदस्य ID, फोन नम्बर, code वा password मिलेन।'
-const encoder = new TextEncoder()
-
-function phoneDigits(value: unknown) {
-  const digits = String(value ?? '').replace(/[०-९]/g, (digit) => String(digit.charCodeAt(0) - 0x0966)).replace(/\D/g, '')
-  return digits.length === 13 && digits.startsWith('977') ? digits.slice(3) : digits
-}
-
-function alias(memberId: string) {
-  return `m-${memberId}@members.ncas.org.np`
-}
-
-async function digest(value: string) {
-  const bytes = await crypto.subtle.digest('SHA-256', encoder.encode(value))
-  return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')
-}
+const INVALID = 'सदस्य ID वा password मिलेन।'
 
 function reply(message: string, status = 400) {
   return Response.json({ error: message }, { status })
@@ -41,58 +27,28 @@ export default {
     }
     if (!member) return reply(INVALID)
 
-    if (input.action === 'login') {
-      if (!member.auth_user_id) return reply('पहिले सक्रियता code बाट खाता खोल्नुहोस्।')
-      const password = String(input.password ?? '')
-      if (!password) return reply(INVALID)
-      const { data, error } = await ctx.supabase.auth.signInWithPassword({
-        email: alias(member.id), password,
-      })
-      if (error || !data.session || data.user.id !== member.auth_user_id) return reply(INVALID)
-      return Response.json({ session: {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      } })
-    }
-
-    if (input.action !== 'activate') return reply('अमान्य अनुरोध।')
-    const phone = phoneDigits(input.phone)
-    const code = String(input.code ?? '').replace(/[^0-9a-f]/gi, '').toUpperCase()
+    if (input.action !== 'login') return reply('अमान्य अनुरोध।')
     const password = String(input.password ?? '')
-    if (phone.length < 10 || code.length !== 12 || password.length < 12 || password.length > 72) {
-      return reply('फोन नम्बर, १२-अक्षरको code र कम्तीमा १२-अक्षरको नयाँ password चाहिन्छ।')
-    }
-    if (password === phone || password === String(input.phone ?? '').trim()) {
-      return reply('फोन नम्बरलाई नै नयाँ password नराख्नुहोस्।')
-    }
-    const codeHash = await digest(`${member.id}:${phone}:${code}`)
-    const { data: accepted, error: consumeError } = await ctx.supabaseAdmin.rpc(
-      'ncas_system_consume_member_activation',
-      { p_member_id: member.id, p_code_hash: codeHash },
-    )
-    if (consumeError) return reply('अहिले सेवा उपलब्ध छैन।', 503)
-    if (!accepted) return reply(INVALID)
+    if (!password) return reply(INVALID)
 
-    if (member.auth_user_id) {
-      const { error } = await ctx.supabaseAdmin.auth.admin.updateUserById(member.auth_user_id, { password })
-      if (error) return reply('Password राख्न सकिएन। Admin सँग नयाँ code लिनुहोस्।', 503)
-    } else {
-      const { data, error } = await ctx.supabaseAdmin.auth.admin.createUser({
-        email: alias(member.id), password, email_confirm: true,
-      })
-      if (error || !data.user) return reply('खाता बनाउन सकिएन। Admin सँग नयाँ code लिनुहोस्।', 503)
-      const { error: linkError } = await ctx.supabaseAdmin
-        .from('ncas_system_members')
-        .update({ auth_user_id: data.user.id })
-        .eq('id', member.id)
-        .is('auth_user_id', null)
-        .select('id')
-        .single()
-      if (linkError) {
-        await ctx.supabaseAdmin.auth.admin.deleteUser(data.user.id)
-        return reply('खाता जोड्न सकिएन। Admin सँग नयाँ code लिनुहोस्।', 503)
-      }
+    // Provision once with the registered phone as the initial password. Even a
+    // wrong first password creates the account, so subsequent guesses go
+    // through Supabase Auth's password rate limits instead of this function.
+    let authUserId: string
+    try { authUserId = await ensureMemberAuthAccount(member, ctx.supabaseAdmin) }
+    catch (error) {
+      if (error instanceof Error && error.message === 'invalid_phone') return reply('दर्ता फोन नम्बर मिलाउन Admin लाई भन्नुहोस्।')
+      console.error('member account provisioning failed', error instanceof Error ? error.message : 'unknown')
+      return reply('खाता बनाउन सकिएन। केही बेरपछि फेरि प्रयास गर्नुहोस्।', 503)
     }
-    return Response.json({ activated: true })
+
+    const { data, error } = await ctx.supabase.auth.signInWithPassword({
+      email: memberAlias(member.id), password,
+    })
+    if (error || !data.session || data.user.id !== authUserId) return reply(INVALID)
+    return Response.json({ session: {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    } })
   }),
 }
