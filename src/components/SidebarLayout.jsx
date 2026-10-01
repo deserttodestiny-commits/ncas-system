@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { PUBLIC_SITE_URL } from '../lib/publicSite'
 
 export default function SidebarLayout({ title, subtitle, navItems, children }) {
   const [open, setOpen] = useState(false)
@@ -51,6 +52,12 @@ export default function SidebarLayout({ title, subtitle, navItems, children }) {
           ))}
         </nav>
         <div className="p-3 border-t border-white/10">
+          <a
+            href={PUBLIC_SITE_URL}
+            className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-blue-100 hover:bg-white/10 rounded-lg"
+          >
+            <span className="text-base">🌐</span> सार्वजनिक वेबसाइट
+          </a>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-blue-100 hover:bg-white/10 rounded-lg"
