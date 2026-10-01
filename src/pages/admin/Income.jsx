@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useCollection } from '../../data/useCollection'
-import { INCOME_CATEGORIES, MEMBERSHIP_RENEWAL_CATEGORY } from '../../data/districts'
+import { CONTRIBUTION_CATEGORIES, INCOME_CATEGORIES, MEMBERSHIP_RENEWAL_CATEGORY } from '../../data/districts'
 import { isMembershipRenewal } from '../../data/membershipPayment'
 import { formatNPR, uid } from '../../data/storage'
 import { monthlyTotalsBs } from '../../data/helpers'
@@ -45,7 +45,15 @@ export default function Income() {
   const handleMemberSelect = (e) => {
     const memberId = e.target.value
     const member = members.find((m) => m.id === memberId)
-    setForm((f) => ({ ...f, memberId, receivedFrom: member ? member.fullName : f.receivedFrom }))
+    setForm((f) => {
+      const previousMember = members.find((m) => m.id === f.memberId)
+      const previousNameWasAutofilled = previousMember && f.receivedFrom === previousMember.fullName
+      return {
+        ...f,
+        memberId,
+        receivedFrom: member ? member.fullName : previousNameWasAutofilled ? '' : f.receivedFrom,
+      }
+    })
   }
 
   const handleSubmit = async (e) => {
@@ -53,6 +61,10 @@ export default function Income() {
     if (saving) return
     if (form.category === MEMBERSHIP_RENEWAL_CATEGORY && !form.memberId) {
       toast('सदस्यता शुल्क/नवीकरणको लागि सदस्य छान्नुहोस्।', 'error')
+      return
+    }
+    if (CONTRIBUTION_CATEGORIES.includes(form.category) && !form.receivedFrom.trim()) {
+      toast('रकम दिने व्यक्ति वा संस्थाको नाम लेख्नुहोस्। नाम थाहा नभए “नाम नखुलेको” लेख्न सक्नुहुन्छ।', 'error')
       return
     }
     if (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0) {
@@ -63,6 +75,7 @@ export default function Income() {
       id: uid(),
       ...form,
       amount: Number(form.amount) || 0,
+      receivedFrom: form.receivedFrom.trim(),
       fiscalYear: Number(form.fiscalYear) || currentFy.endYear,
       memberId: form.memberId || null,
       bsKey: bsMonthKeyForAdDate(form.date),
@@ -143,7 +156,8 @@ export default function Income() {
                   <th className="px-4 py-3">मिति (वि.सं.)</th>
                   <th className="px-4 py-3">श्रेणी</th>
                   <th className="px-4 py-3">आ.व.</th>
-                  <th className="px-4 py-3">सदस्य</th>
+                  <th className="px-4 py-3">रकम दिने व्यक्ति/संस्था</th>
+                  <th className="px-4 py-3">सम्बन्धित सदस्य</th>
                   <th className="px-4 py-3">विवरण</th>
                   <th className="px-4 py-3 text-right">रकम</th>
                   <th className="px-4 py-3 text-right">कार्य</th>
@@ -155,6 +169,7 @@ export default function Income() {
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatBs(e.date)}</td>
                     <td className="px-4 py-3 text-gray-700">{e.category}</td>
                     <td className="px-4 py-3 text-gray-600">{e.fiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(e.fiscalYear)) : '-'}</td>
+                    <td className="px-4 py-3 text-gray-700">{e.receivedFrom || memberName(e.memberId) || '-'}</td>
                     <td className="px-4 py-3 text-gray-600">{memberName(e.memberId) || '-'}</td>
                     <td className="px-4 py-3 text-gray-700">{e.description}</td>
                     <td className="px-4 py-3 text-right font-medium text-ncas-success">{formatNPR(e.amount)}</td>
@@ -190,6 +205,9 @@ export default function Income() {
               <option value="">— कुनै सदस्यसँग सम्बन्धित छैन —</option>
               {members.map((m) => <option key={m.id} value={m.id}>{m.membershipId} — {m.fullName}</option>)}
             </select>
+            {CONTRIBUTION_CATEGORIES.includes(form.category) && (
+              <p className="text-xs text-gray-500 mt-1">सदस्य नभएको व्यक्ति वा संस्थाले सहयोग गरेको भए यहाँ सदस्य नछान्नुहोस्। तल सहयोग गर्नेको नाम लेख्नुहोस्।</p>
+            )}
           </div>
           {form.category === MEMBERSHIP_RENEWAL_CATEGORY && form.memberId && (
             <div>
@@ -211,8 +229,8 @@ export default function Income() {
             <input value={form.description} onChange={set('description')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">प्राप्त गर्ने</label>
-            <input value={form.receivedFrom} onChange={set('receivedFrom')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">रकम दिने व्यक्ति वा संस्था {CONTRIBUTION_CATEGORIES.includes(form.category) ? '*' : '(वैकल्पिक)'}</label>
+            <input value={form.receivedFrom} onChange={set('receivedFrom')} placeholder="नाम थाहा नभए: नाम नखुलेको" required={CONTRIBUTION_CATEGORIES.includes(form.category)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" disabled={saving} onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium disabled:opacity-50">रद्द गर्नुहोस्</button>
