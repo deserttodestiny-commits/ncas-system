@@ -12,6 +12,8 @@ import EmptyState from '../../components/EmptyState'
 import StatusBadge from '../../components/StatusBadge'
 import Avatar from '../../components/Avatar'
 import MemberForm from './MemberForm'
+import { isSupabaseConfigured } from '../../lib/supabase'
+import { resetMemberPassword } from '../../lib/memberAccess'
 
 function toCsvValue(v) {
   const s = Array.isArray(v) ? v.join('; ') : String(v ?? '')
@@ -33,6 +35,9 @@ export default function Members() {
 
   const [modalMode, setModalMode] = useState(null) // 'add' | 'edit' | 'view'
   const [activeMember, setActiveMember] = useState(null)
+  const [resetResult, setResetResult] = useState(null)
+  const [resetBusy, setResetBusy] = useState(false)
+  const [saveBusy, setSaveBusy] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -52,12 +57,15 @@ export default function Members() {
   const closeModal = () => { setModalMode(null); setActiveMember(null) }
 
   const handleSubmit = async (form) => {
+    if (saveBusy) return
+    setSaveBusy(true)
     try {
       if (modalMode === 'add') {
         const joinYear = adToBs(form.joinDate)?.year || getTodayBs().year
         const membershipId = nextMembershipId(members, joinYear)
         await addItem({ id: uid(), membershipId, ...form })
-        toast('नयाँ सदस्य थपियो')
+        closeModal()
+        toast('सदस्य थपियो। सदस्य ID र दर्ता मोबाइल नम्बरबाट पहिलो login गर्न सकिन्छ।')
       } else if (modalMode === 'edit') {
         const newId = form.membershipId?.trim()
         if (!newId) return toast('सदस्यता आइडी खाली हुन सक्दैन', 'error')
@@ -65,10 +73,12 @@ export default function Members() {
         if (duplicate) return toast('यो सदस्यता आइडी पहिले नै अर्को सदस्यसँग छ', 'error')
         await updateItem(activeMember.id, { ...form, membershipId: newId })
         toast('सदस्य विवरण अद्यावधिक भयो')
+        closeModal()
       }
-      closeModal()
     } catch (error) {
       toast(`सदस्य सुरक्षित भएन: ${error.message}`, 'error')
+    } finally {
+      setSaveBusy(false)
     }
   }
 
@@ -81,6 +91,20 @@ export default function Members() {
       } catch (error) {
         toast(error.message, 'error')
       }
+    }
+  }
+
+  const handleResetPassword = async (m) => {
+    const ok = await confirm(`${m.fullName} को password दर्ता भएको मोबाइल नम्बरमा रिसेट गर्ने? यसपछि पुरानो password काम गर्दैन। सदस्यलाई नयाँ अस्थायी password सुरक्षित रूपमा जानकारी दिनुहोस्।`)
+    if (!ok) return
+    setResetBusy(true)
+    try {
+      const result = await resetMemberPassword(m.id)
+      setResetResult({ ...result, memberName: m.fullName })
+    } catch (error) {
+      toast(error.message || 'Password रिसेट हुन सकेन।', 'error')
+    } finally {
+      setResetBusy(false)
     }
   }
 
@@ -167,6 +191,7 @@ export default function Members() {
                   <th className="px-4 py-3">प्रकार</th>
                   <th className="px-4 py-3">तिरेको आ.व.</th>
                   <th className="px-4 py-3">स्थिति</th>
+                  {isSupabaseConfigured && <th className="px-4 py-3">Login</th>}
                   <th className="px-4 py-3 text-right">कार्य</th>
                 </tr>
               </thead>
@@ -187,8 +212,10 @@ export default function Members() {
                       {m.paidThroughFiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(m.paidThroughFiscalYear)) : '-'}
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={getMemberPaymentStatus(m.paidThroughFiscalYear)} /></td>
+                    {isSupabaseConfigured && <td className="px-4 py-3 text-gray-600">{m.hasLogin ? 'खाता बनेको' : 'पहिलो login बाँकी'}</td>}
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
+                        {isSupabaseConfigured && m.hasLogin && <button disabled={resetBusy} onClick={() => handleResetPassword(m)} className="text-ncas-blue hover:underline text-xs font-medium disabled:opacity-50">Password रिसेट</button>}
                         <button onClick={() => openView(m)} className="text-ncas-blue hover:underline text-xs font-medium">हेर्नुहोस्</button>
                         <button onClick={() => openEdit(m)} className="text-ncas-gold hover:underline text-xs font-medium">सम्पादन</button>
                         {canRemove && <button onClick={() => handleDelete(m)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>}
@@ -205,7 +232,7 @@ export default function Members() {
       </div>
 
       <Modal open={modalMode === 'add' || modalMode === 'edit'} onClose={closeModal} title={modalMode === 'add' ? 'नयाँ सदस्य थप्नुहोस्' : 'सदस्य सम्पादन गर्नुहोस्'} wide>
-        <MemberForm initial={modalMode === 'edit' ? activeMember : null} onCancel={closeModal} onSubmit={handleSubmit} />
+        <MemberForm initial={modalMode === 'edit' ? activeMember : null} onCancel={closeModal} onSubmit={handleSubmit} isSaving={saveBusy} />
       </Modal>
 
       <Modal open={modalMode === 'view'} onClose={closeModal} title="सदस्य विवरण" wide>
@@ -245,6 +272,16 @@ export default function Members() {
             />
             <Detail label="मासिक शुल्क" value={`रु. ${activeMember.monthlyFee}`} />
             {activeMember.notes && <Detail label="कैफियत" value={activeMember.notes} full />}
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={Boolean(resetResult)} onClose={() => setResetResult(null)} title="Password रिसेट भयो">
+        {resetResult && (
+          <div className="space-y-4 text-sm">
+            <p><strong>{resetResult.memberName}</strong> ({resetResult.membershipId}) को password दर्ता मोबाइल नम्बर (अन्तिम अंक {resetResult.phoneLast4}) मा रिसेट भयो।</p>
+            <p className="text-gray-600">कुनै SMS पठाइएको छैन। सदस्यलाई सुरक्षित माध्यमबाट जानकारी दिनुहोस् र Profile → Settings मा नयाँ password राख्न सम्झाउनुहोस्।</p>
+            <button type="button" onClick={() => setResetResult(null)} className="rounded-lg bg-ncas-dark text-white px-4 py-2">बन्द गर्नुहोस्</button>
           </div>
         )}
       </Modal>

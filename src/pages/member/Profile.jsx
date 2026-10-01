@@ -3,12 +3,19 @@ import { useCurrentMember } from '../../data/useCurrentMember'
 import { formatBs } from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
 import Avatar from '../../components/Avatar'
-import { isSupabaseConfigured } from '../../lib/supabase'
+import { isSupabaseConfigured, supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
+import { changeMemberPassword } from '../../lib/passwordChange'
 
 export default function Profile() {
   const { member, updateItem } = useCurrentMember()
+  const { session } = useAuth()
   const { toast } = useUi()
   const [form, setForm] = useState({ phone: '', email: '', municipality: '', wardNo: '', organizationName: '' })
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
 
   useEffect(() => {
     if (member) {
@@ -27,6 +34,30 @@ export default function Profile() {
     e.preventDefault()
     updateItem(member.id, form)
     toast('प्रोफाइल अद्यावधिक भयो')
+  }
+
+  const handlePasswordChange = async (event) => {
+    event.preventDefault()
+    if (savingPassword) return
+    if (newPassword !== confirmPassword) return toast('नयाँ password दुई ठाउँमा मिलेन।', 'error')
+    setSavingPassword(true)
+    try {
+      await changeMemberPassword({
+        client: supabase,
+        memberId: member.id,
+        authUserId: session.userId,
+        currentPassword,
+        newPassword,
+      })
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      toast('Password परिवर्तन भयो। अर्को login मा नयाँ password प्रयोग गर्नुहोस्।')
+    } catch (error) {
+      toast(error.message || 'Password परिवर्तन हुन सकेन।', 'error')
+    } finally {
+      setSavingPassword(false)
+    }
   }
 
   return (
@@ -58,7 +89,27 @@ export default function Profile() {
       </div>
 
       {isSupabaseConfigured ? (
-        <p className="bg-white rounded-xl shadow-sm p-5 text-sm text-gray-600">विवरण सच्याउन संघको कार्यालयमा सम्पर्क गर्नुहोस्। सदस्यता र भुक्तानी अवस्था सदस्य आफैंले बदल्न मिल्दैन।</p>
+        <>
+          <p className="bg-white rounded-xl shadow-sm p-5 text-sm text-gray-600">विवरण सच्याउन संघको कार्यालयमा सम्पर्क गर्नुहोस्। सदस्यता र भुक्तानी अवस्था सदस्य आफैंले बदल्न मिल्दैन।</p>
+          <form onSubmit={handlePasswordChange} className="bg-white rounded-xl shadow-sm p-5 space-y-4">
+            <h2 className="font-semibold text-ncas-dark">Settings · Password परिवर्तन</h2>
+            <p className="text-sm text-gray-600">पहिलो password दर्ता भएको मोबाइल नम्बर हो। त्यसपछि आफ्नै बलियो password राख्न सक्नुहुन्छ।</p>
+            <div>
+              <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">हालको password</label>
+              <input id="current-password" type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">नयाँ password (कम्तीमा १२ अक्षर)</label>
+              <input id="new-password" type="password" autoComplete="new-password" required minLength={12} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">नयाँ password फेरि लेख्नुहोस्</label>
+              <input id="confirm-password" type="password" autoComplete="new-password" required minLength={12} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <button type="submit" disabled={savingPassword} className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium disabled:opacity-50">{savingPassword ? 'परिवर्तन हुँदैछ…' : 'Password परिवर्तन गर्नुहोस्'}</button>
+            <p className="text-xs text-gray-500">Password बिर्सिएमा संघको Admin लाई सम्पर्क गर्नुहोस्।</p>
+          </form>
+        </>
       ) : <form onSubmit={handleSave} className="bg-white rounded-xl shadow-sm p-5 space-y-4">
         <h2 className="font-semibold text-ncas-dark">सम्पादन गर्न सकिने विवरण</h2>
         <div className="grid sm:grid-cols-2 gap-4">
