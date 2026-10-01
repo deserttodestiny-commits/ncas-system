@@ -9,6 +9,10 @@ export function memberAlias(memberId) {
   return `m-${memberId}@members.ncas.org.np`
 }
 
+export function isInitialPassword(member, password) {
+  return !member.auth_user_id && /^9\d{9}$/.test(phoneDigits(member.phone)) && password === phoneDigits(member.phone)
+}
+
 export async function ensureMemberAuthAccount(member, adminClient) {
   if (member.auth_user_id) return member.auth_user_id
   const initialPassword = phoneDigits(member.phone)

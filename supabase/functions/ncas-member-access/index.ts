@@ -1,5 +1,5 @@
 import { withSupabase } from 'npm:@supabase/server@^1'
-import { ensureMemberAuthAccount, memberAlias } from './account.js'
+import { ensureMemberAuthAccount, isInitialPassword, memberAlias } from './account.js'
 
 const INVALID = 'सदस्य ID वा password मिलेन।'
 
@@ -31,9 +31,10 @@ export default {
     const password = String(input.password ?? '')
     if (!password) return reply(INVALID)
 
-    // Provision once with the registered phone as the initial password. Even a
-    // wrong first password creates the account, so subsequent guesses go
-    // through Supabase Auth's password rate limits instead of this function.
+    // Do not create or link an account just because someone knows a member ID.
+    // First use must match the registered phone; linked accounts then use Auth
+    // so a password change makes the phone number stop working.
+    if (!member.auth_user_id && !isInitialPassword(member, password)) return reply(INVALID)
     let authUserId: string
     try { authUserId = await ensureMemberAuthAccount(member, ctx.supabaseAdmin) }
     catch (error) {

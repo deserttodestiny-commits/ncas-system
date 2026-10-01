@@ -1,11 +1,18 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { ensureMemberAuthAccount, memberAlias, phoneDigits } from '../supabase/functions/ncas-member-access/account.js'
+import { ensureMemberAuthAccount, isInitialPassword, memberAlias, phoneDigits } from '../supabase/functions/ncas-member-access/account.js'
 
 test('normalizes registered Nepali mobile numbers', () => {
   assert.equal(phoneDigits('+977 980-000-0000'), '9800000000')
   assert.equal(phoneDigits('९८००००००००'), '9800000000')
   assert.equal(memberAlias('member-1'), 'm-member-1@members.ncas.org.np')
+})
+
+test('only the registered phone can trigger first-use account creation', () => {
+  const member = { phone: '+977 980-000-0000', auth_user_id: null }
+  assert.equal(isInitialPassword(member, '9800000000'), true)
+  assert.equal(isInitialPassword(member, '9800000001'), false)
+  assert.equal(isInitialPassword({ ...member, auth_user_id: 'auth-1' }, '9800000000'), false)
 })
 
 test('first member login provisions Auth with the registered phone and links the row', async () => {
