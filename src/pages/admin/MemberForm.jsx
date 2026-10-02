@@ -197,10 +197,6 @@ export default function MemberForm({ initial, onCancel, onSubmit, isSaving = fal
           <label className="block text-sm font-medium text-gray-700 mb-1">सामेल मिति (वि.सं.)</label>
           <BsDateInput value={form.joinDate} onChange={setDate('joinDate')} required />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">मासिक शुल्क (रु.)</label>
-          <input type="number" min="0" value={form.monthlyFee} onChange={set('monthlyFee')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
-        </div>
       </div>
 
       <p className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-800">
