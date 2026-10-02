@@ -2,11 +2,10 @@ import { useState } from 'react'
 import {
   ART_FIELDS, DISTRICTS, EMPLOYMENT_STATUSES, MEMBERSHIP_TYPES,
 } from '../../data/districts'
-import { adToBs, fiscalYearLabel, fiscalYearFromEndYear, getCurrentFiscalYear, getMemberExpiryAdIso } from '../../data/bsCalendar'
+import { adToBs } from '../../data/bsCalendar'
 import { fileToResizedDataUrl } from '../../data/image'
 import { formatMembershipId, parseMembershipId } from '../../data/storage'
 import BsDateInput from '../../components/BsDateInput'
-import FiscalYearSelect from '../../components/FiscalYearSelect'
 import Avatar from '../../components/Avatar'
 import { useUi } from '../../context/UiContext'
 
@@ -67,9 +66,6 @@ export default function MemberForm({ initial, onCancel, onSubmit, isSaving = fal
       onSubmit(form)
     }
   }
-
-  const currentFy = getCurrentFiscalYear()
-  const expiryPreview = form.paidThroughFiscalYear ? getMemberExpiryAdIso(Number(form.paidThroughFiscalYear)) : ''
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -205,21 +201,11 @@ export default function MemberForm({ initial, onCancel, onSubmit, isSaving = fal
           <label className="block text-sm font-medium text-gray-700 mb-1">मासिक शुल्क (रु.)</label>
           <input type="number" min="0" value={form.monthlyFee} onChange={set('monthlyFee')} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            सदस्यता तिरेको आ.व. (अन्तिम) — चालु आ.व. {fiscalYearLabel(currentFy)}
-          </label>
-          <FiscalYearSelect
-            value={form.paidThroughFiscalYear}
-            onChange={(endYear) => setForm((f) => ({ ...f, paidThroughFiscalYear: endYear }))}
-          />
-          {form.paidThroughFiscalYear && (
-            <p className="text-xs text-gray-400 mt-1">
-              म्याद: आ.व. {fiscalYearLabel(fiscalYearFromEndYear(Number(form.paidThroughFiscalYear)))} को आषाढ़ मसान्तसम्म (AD: {expiryPreview})
-            </p>
-          )}
-        </div>
       </div>
+
+      <p className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-800">
+        सदस्यता तिरेको वर्ष र Paid स्थिति आम्दानी → सदस्यता शुल्क/नवीकरणमा रकम दर्ता गरेपछि मात्र परिवर्तन हुन्छ।
+      </p>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">कैफियत</label>
