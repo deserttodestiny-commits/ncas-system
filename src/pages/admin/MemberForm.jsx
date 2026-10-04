@@ -199,10 +199,6 @@ export default function MemberForm({ initial, onCancel, onSubmit, isSaving = fal
         </div>
       </div>
 
-      <p className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-800">
-        सदस्यता तिरेको वर्ष र Paid स्थिति आम्दानी → सदस्यता शुल्क/नवीकरणमा रकम दर्ता गरेपछि मात्र परिवर्तन हुन्छ।
-      </p>
-
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">कैफियत</label>
         <textarea value={form.notes} onChange={set('notes')} rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
