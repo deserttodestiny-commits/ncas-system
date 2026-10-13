@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useCollection } from '../../data/useCollection'
+import { correctCloudIncome, listIncomeCorrections } from '../../data/cloudCollections'
 import { CONTRIBUTION_CATEGORIES, INCOME_CATEGORIES, MEMBERSHIP_RENEWAL_CATEGORY } from '../../data/districts'
 import { isMembershipRenewal } from '../../data/membershipPayment'
 import { formatNPR, uid } from '../../data/storage'
@@ -29,12 +30,18 @@ const emptyForm = {
 }
 
 export default function Income() {
-  const { items: income, addItem, removeItem, canRemove } = useCollection('income')
+  const { items: income, addItem, removeItem, canRemove, refresh: refreshIncome } = useCollection('income')
   const { items: members, updateItem: updateMember, refresh: refreshMembers } = useCollection('members')
   const { toast, confirm } = useUi()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [correcting, setCorrecting] = useState(null)
+  const [correctionForm, setCorrectionForm] = useState(null)
+  const [correctionSaving, setCorrectionSaving] = useState(false)
+  const [auditEntry, setAuditEntry] = useState(null)
+  const [auditItems, setAuditItems] = useState([])
+  const [auditLoading, setAuditLoading] = useState(false)
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
@@ -117,6 +124,65 @@ export default function Income() {
     }
   }
 
+  const openCorrection = (entry) => {
+    setCorrecting(entry)
+    setCorrectionForm({
+      date: entry.date,
+      category: entry.category,
+      amount: String(entry.amount ?? ''),
+      description: entry.description || '',
+      receivedFrom: entry.receivedFrom || '',
+      memberId: entry.memberId || '',
+      fiscalYear: entry.fiscalYear || currentFy.endYear,
+      reason: '',
+    })
+  }
+
+  const submitCorrection = async (e) => {
+    e.preventDefault()
+    if (!correcting || !correctionForm || correctionSaving) return
+    if (!correctionForm.reason.trim() || correctionForm.reason.trim().length < 3) {
+      toast('सच्याउनुको कारण कम्तीमा ३ अक्षरमा लेख्नुहोस्।', 'error')
+      return
+    }
+    if (correctionForm.category === MEMBERSHIP_RENEWAL_CATEGORY && !correctionForm.memberId) {
+      toast('सदस्यता शुल्क/नवीकरणको लागि सदस्य छान्नुहोस्।', 'error')
+      return
+    }
+    if (!Number.isFinite(Number(correctionForm.amount)) || Number(correctionForm.amount) <= 0) {
+      toast('रकम शून्यभन्दा बढी हुनुपर्छ।', 'error')
+      return
+    }
+    setCorrectionSaving(true)
+    try {
+      await correctCloudIncome(correcting.id, {
+        ...correctionForm,
+        bsKey: bsMonthKeyForAdDate(correctionForm.date),
+      })
+      await Promise.all([refreshIncome(), refreshMembers()])
+      setCorrecting(null)
+      setCorrectionForm(null)
+      toast('आम्दानी सच्याइयो। पुरानो र नयाँ विवरण audit history मा सुरक्षित छ।')
+    } catch (error) {
+      toast(`आम्दानी सच्याउन सकिएन: ${error.message}`, 'error')
+    } finally {
+      setCorrectionSaving(false)
+    }
+  }
+
+  const openAuditHistory = async (entry) => {
+    setAuditEntry(entry)
+    setAuditItems([])
+    setAuditLoading(true)
+    try {
+      setAuditItems(await listIncomeCorrections(entry.id))
+    } catch (error) {
+      toast(`सच्याउने history लोड भएन: ${error.message}`, 'error')
+    } finally {
+      setAuditLoading(false)
+    }
+  }
+
   const memberName = (memberId) => members.find((m) => m.id === memberId)?.fullName
 
   return (
@@ -174,6 +240,8 @@ export default function Income() {
                     <td className="px-4 py-3 text-gray-700">{e.description}</td>
                     <td className="px-4 py-3 text-right font-medium text-ncas-success">{formatNPR(e.amount)}</td>
                     <td className="px-4 py-3 text-right">
+                      {isSupabaseConfigured && <button onClick={() => openCorrection(e)} className="text-ncas-blue hover:underline text-xs font-medium mr-3">सच्याउनुहोस्</button>}
+                      {isSupabaseConfigured && <button onClick={() => openAuditHistory(e)} className="text-gray-600 hover:underline text-xs font-medium mr-3">History</button>}
                       {canRemove && <button onClick={() => handleDelete(e)} className="text-ncas-danger hover:underline text-xs font-medium">हटाउनुहोस्</button>}
                     </td>
                   </tr>
@@ -238,6 +306,102 @@ export default function Income() {
           </div>
         </form>
       </Modal>
+
+      <Modal open={Boolean(correcting && correctionForm)} onClose={() => !correctionSaving && (setCorrecting(null), setCorrectionForm(null))} title="आम्दानी सच्याउनुहोस्">
+        {correcting && correctionForm && (
+          <form onSubmit={submitCorrection} className="space-y-4">
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
+              पुरानो entry मेटिँदैन। के परिवर्तन भयो र किन भयो भन्ने audit history मा सुरक्षित रहन्छ।
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">मिति (वि.सं.)</label>
+              <BsDateInput value={correctionForm.date} onChange={(date) => setCorrectionForm((f) => ({ ...f, date }))} required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">श्रेणी</label>
+              <select value={correctionForm.category} onChange={(e) => setCorrectionForm((f) => ({ ...f, category: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                {INCOME_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">सम्बन्धित सदस्य {correctionForm.category === MEMBERSHIP_RENEWAL_CATEGORY ? '*' : '(वैकल्पिक)'}</label>
+              <select required={correctionForm.category === MEMBERSHIP_RENEWAL_CATEGORY} value={correctionForm.memberId} onChange={(e) => setCorrectionForm((f) => ({ ...f, memberId: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="">— कुनै सदस्यसँग सम्बन्धित छैन —</option>
+                {members.map((member) => <option key={member.id} value={member.id}>{member.membershipId} — {member.fullName}</option>)}
+              </select>
+            </div>
+            {correctionForm.category === MEMBERSHIP_RENEWAL_CATEGORY && correctionForm.memberId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">लाग्ने आ.व.</label>
+                <FiscalYearSelect value={correctionForm.fiscalYear} onChange={(fiscalYear) => setCorrectionForm((f) => ({ ...f, fiscalYear }))} />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">रकम (रु.)</label>
+              <input type="number" min="0.01" step="0.01" required value={correctionForm.amount} onChange={(e) => setCorrectionForm((f) => ({ ...f, amount: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">विवरण</label>
+              <input value={correctionForm.description} onChange={(e) => setCorrectionForm((f) => ({ ...f, description: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">रकम दिने व्यक्ति/संस्था</label>
+              <input value={correctionForm.receivedFrom} onChange={(e) => setCorrectionForm((f) => ({ ...f, receivedFrom: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">सच्याउनुको कारण *</label>
+              <textarea required minLength="3" rows="2" value={correctionForm.reason} onChange={(e) => setCorrectionForm((f) => ({ ...f, reason: e.target.value }))} placeholder="जस्तै: रकम गलत लेखिएको थियो" className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" disabled={correctionSaving} onClick={() => { setCorrecting(null); setCorrectionForm(null) }} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium disabled:opacity-50">रद्द गर्नुहोस्</button>
+              <button type="submit" disabled={correctionSaving} className="px-5 py-2 rounded-lg bg-ncas-dark text-white font-medium hover:opacity-90 disabled:opacity-50">{correctionSaving ? 'सच्याउँदैछ…' : 'सच्याएर सुरक्षित गर्नुहोस्'}</button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal open={Boolean(auditEntry)} onClose={() => setAuditEntry(null)} title="आम्दानी सच्याउने History" wide>
+        {auditEntry && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">{formatBs(auditEntry.date)} · {auditEntry.category} · {formatNPR(auditEntry.amount)}</p>
+            {auditLoading ? <p className="text-sm text-gray-500">History लोड हुँदैछ…</p> : auditItems.length ? (
+              auditItems.map((item) => <CorrectionAudit key={item.id} item={item} members={members} />)
+            ) : <p className="text-sm text-gray-500">यो entry अहिलेसम्म सच्याइएको छैन।</p>}
+          </div>
+        )}
+      </Modal>
     </div>
+  )
+}
+
+const AUDIT_FIELDS = [
+  ['मिति', 'date'], ['श्रेणी', 'category'], ['रकम', 'amount'], ['विवरण', 'description'],
+  ['रकम दिने', 'received_from'], ['लाग्ने आ.व.', 'fiscal_year'], ['सम्बन्धित सदस्य', 'member_id'],
+]
+
+function CorrectionAudit({ item, members }) {
+  const memberName = (id) => members.find((member) => member.id === id)?.fullName || id || '-'
+  const formatValue = (key, value) => {
+    if (key === 'amount') return formatNPR(value || 0)
+    if (key === 'date') return value ? formatBs(value) : '-'
+    if (key === 'fiscal_year') return value ? fiscalYearLabel(fiscalYearFromEndYear(Number(value))) : '-'
+    if (key === 'member_id') return memberName(value)
+    return value || '-'
+  }
+  const changed = AUDIT_FIELDS.filter(([, key]) => String(item.beforeData[key] ?? '') !== String(item.afterData[key] ?? ''))
+  return (
+    <article className="rounded-xl border border-gray-200 p-4 text-sm">
+      <div className="font-semibold text-ncas-dark">कारण: {item.reason}</div>
+      <div className="text-xs text-gray-500 mt-1">सच्याइएको: {formatBs(String(item.correctedAt).slice(0, 10))}</div>
+      <div className="mt-3 space-y-2">
+        {changed.map(([label, key]) => (
+          <div key={key} className="grid sm:grid-cols-[110px_1fr_1fr] gap-2 border-t border-gray-100 pt-2">
+            <span className="text-gray-500">{label}</span>
+            <span className="text-red-700 line-through">{formatValue(key, item.beforeData[key])}</span>
+            <span className="text-ncas-success font-medium">{formatValue(key, item.afterData[key])}</span>
+          </div>
+        ))}
+      </div>
+    </article>
   )
 }

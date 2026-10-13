@@ -131,3 +131,37 @@ export async function updateCloudItem(key, id, patch, current) {
   if (error) throw error
   return fromRow(key, data)
 }
+
+export async function correctCloudIncome(id, item) {
+  const { data, error } = await supabase.rpc('ncas_system_correct_income', {
+    p_income_id: id,
+    p_date: item.date,
+    p_category: item.category,
+    p_amount: Number(item.amount),
+    p_description: item.description || null,
+    p_received_from: item.receivedFrom || null,
+    p_member_id: item.memberId || null,
+    p_fiscal_year: item.fiscalYear ? Number(item.fiscalYear) : null,
+    p_bs_key: item.bsKey || null,
+    p_reason: item.reason,
+  })
+  if (error) throw error
+  return fromRow('income', data)
+}
+
+export async function listIncomeCorrections(incomeId) {
+  const { data, error } = await supabase
+    .from('ncas_system_income_corrections')
+    .select('id, income_id, reason, before_data, after_data, corrected_at')
+    .eq('income_id', incomeId)
+    .order('corrected_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map((row) => ({
+    id: row.id,
+    incomeId: row.income_id,
+    reason: row.reason,
+    beforeData: row.before_data || {},
+    afterData: row.after_data || {},
+    correctedAt: row.corrected_at,
+  }))
+}
