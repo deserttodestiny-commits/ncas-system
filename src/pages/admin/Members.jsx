@@ -269,7 +269,7 @@ export default function Members() {
             <Detail label="संस्था" value={activeMember.organizationName || '-'} />
             <Detail label="सदस्यता प्रकार" value={activeMember.membershipType} />
             <Detail label="सामेल मिति (वि.सं.)" value={formatBs(activeMember.joinDate)} />
-            <Detail label="Software मा दर्ता मिति" value={activeMember.createdAt ? formatBs(activeMember.createdAt) : 'पुरानो record — दर्ता मिति उपलब्ध छैन'} />
+            <Detail label="Software मा दर्ता मिति" value={activeMember.createdAt ? (formatBs(String(activeMember.createdAt).slice(0, 10)) || 'दर्ता मिति उपलब्ध छैन') : 'पुरानो record — दर्ता मिति उपलब्ध छैन'} />
             <Detail label="भुक्तानी स्थिति" value={<StatusBadge status={getMemberPaymentStatus(activeMember.paidThroughFiscalYear)} />} />
             <Detail
               label="तिरेको आ.व. / म्याद"
