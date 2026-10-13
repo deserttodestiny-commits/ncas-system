@@ -4,7 +4,7 @@ import { ART_FIELDS, DISTRICTS, MEMBERSHIP_TYPES, PAYMENT_STATUSES } from '../..
 import { nextMembershipId, uid } from '../../data/storage'
 import {
   adToBs, fiscalYearFromEndYear, fiscalYearLabel, formatBs,
-  getMemberExpiryAdIso, getMemberPaymentStatus, getTodayBs,
+  getCurrentFiscalYear, getFiscalYearForAdDate, getMemberExpiryAdIso, getMemberPaymentStatus, getTodayBs,
 } from '../../data/bsCalendar'
 import { useUi } from '../../context/UiContext'
 import Modal from '../../components/Modal'
@@ -12,6 +12,8 @@ import EmptyState from '../../components/EmptyState'
 import StatusBadge from '../../components/StatusBadge'
 import Avatar from '../../components/Avatar'
 import MemberForm from './MemberForm'
+import { financialHistorySummary } from '../../data/memberFinancialHistory'
+import { formatNPR } from '../../data/storage'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { resetMemberPassword } from '../../lib/memberAccess'
 
@@ -25,6 +27,7 @@ function toCsvValue(v) {
 
 export default function Members() {
   const { items: members, addItem, updateItem, removeItem, canRemove } = useCollection('members')
+  const { items: income } = useCollection('income')
   const { toast, confirm } = useUi()
 
   const [search, setSearch] = useState('')
@@ -55,6 +58,10 @@ export default function Members() {
   const openEdit = (m) => { setActiveMember(m); setModalMode('edit') }
   const openView = (m) => { setActiveMember(m); setModalMode('view') }
   const closeModal = () => { setModalMode(null); setActiveMember(null) }
+  const activeFinancialHistory = useMemo(
+    () => activeMember ? financialHistorySummary(activeMember, income, getCurrentFiscalYear(), getFiscalYearForAdDate(activeMember.joinDate)) : null,
+    [activeMember, income]
+  )
 
   const handleSubmit = async (form) => {
     if (saveBusy) return
@@ -236,8 +243,9 @@ export default function Members() {
       </Modal>
 
       <Modal open={modalMode === 'view'} onClose={closeModal} title="सदस्य विवरण" wide>
-        {activeMember && (
-          <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        {activeMember && activeFinancialHistory && (
+          <div className="space-y-6">
+            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div className="sm:col-span-2 flex items-center gap-4 pb-2">
               <Avatar src={activeMember.photo} sizePx={72} />
               <div>
@@ -261,6 +269,7 @@ export default function Members() {
             <Detail label="संस्था" value={activeMember.organizationName || '-'} />
             <Detail label="सदस्यता प्रकार" value={activeMember.membershipType} />
             <Detail label="सामेल मिति (वि.सं.)" value={formatBs(activeMember.joinDate)} />
+            <Detail label="Software मा दर्ता मिति" value={activeMember.createdAt ? formatBs(activeMember.createdAt) : 'पुरानो record — दर्ता मिति उपलब्ध छैन'} />
             <Detail label="भुक्तानी स्थिति" value={<StatusBadge status={getMemberPaymentStatus(activeMember.paidThroughFiscalYear)} />} />
             <Detail
               label="तिरेको आ.व. / म्याद"
@@ -270,8 +279,10 @@ export default function Members() {
                   : '-'
               }
             />
-            <Detail label="मासिक शुल्क" value={`रु. ${activeMember.monthlyFee}`} />
             {activeMember.notes && <Detail label="कैफियत" value={activeMember.notes} full />}
+            </div>
+
+            <MemberFinancialHistory summary={activeFinancialHistory} />
           </div>
         )}
       </Modal>
@@ -285,6 +296,88 @@ export default function Members() {
           </div>
         )}
       </Modal>
+    </div>
+  )
+}
+
+function MemberFinancialHistory({ summary }) {
+  const { history, byCategory, paidTotal, firstPaymentDate, membership, requiredPayment } = summary
+
+  return (
+    <section className="border-t border-gray-200 pt-5 space-y-4">
+      <div>
+        <h2 className="text-lg font-bold text-ncas-dark">वित्तीय इतिहास</h2>
+        <p className="text-xs text-gray-500 mt-1">रकम दर्ता भएका वास्तविक आम्दानी रेकर्डका आधारमा तयार गरिएको विवरण।</p>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        <HistoryStat label="दर्ता भएको भुक्तानी" value={formatNPR(paidTotal)} />
+        <HistoryStat label="पहिलो भुक्तानी" value={firstPaymentDate ? formatBs(firstPaymentDate) : 'कुनै रेकर्ड छैन'} />
+        <HistoryStat label="कुल पटक" value={`${history.length} पटक`} />
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+        <div className="font-semibold text-amber-950">अनिवार्य भुक्तानी</div>
+        <p className="mt-1 text-amber-900">
+          {requiredPayment.name} ({requiredPayment.frequency}){requiredPayment.requiredFromEndYear ? ` — आ.व. ${fiscalYearLabel(fiscalYearFromEndYear(requiredPayment.requiredFromEndYear))} देखि` : ''}।
+          अन्य अनिवार्य शुल्क हाल system मा तय गरिएको छैन।
+        </p>
+        <div className="mt-3 grid sm:grid-cols-2 gap-2 text-xs">
+          <div><span className="text-amber-800">तिरेका आ.व.:</span> {membership.paidEndYears.length ? membership.paidEndYears.map((year) => fiscalYearLabel(fiscalYearFromEndYear(year))).join(', ') : 'रेकर्ड छैन'}</div>
+          <div><span className="text-amber-800">बाँकी आ.व.:</span> {membership.overdueEndYears.length ? membership.overdueEndYears.map((year) => fiscalYearLabel(fiscalYearFromEndYear(year))).join(', ') : 'कुनै बाँकी छैन'}</div>
+        </div>
+      </div>
+
+      <div className="bg-gray-50 rounded-xl p-4">
+        <h3 className="font-semibold text-ncas-dark text-sm mb-2">कुन शीर्षकमा कति तिरिएको छ</h3>
+        {byCategory.length ? (
+          <div className="space-y-2 text-sm">
+            {byCategory.map((item) => (
+              <div key={item.category} className="flex justify-between gap-3 border-b border-gray-200 last:border-0 pb-2 last:pb-0">
+                <span className="text-gray-700">{item.category} <span className="text-xs text-gray-400">({item.count} पटक)</span></span>
+                <span className="font-semibold text-ncas-success whitespace-nowrap">{formatNPR(item.total)}</span>
+              </div>
+            ))}
+          </div>
+        ) : <p className="text-sm text-gray-500">यस सदस्यको लागि कुनै रकम दर्ता गरिएको छैन।</p>}
+      </div>
+
+      <div className="overflow-x-auto border border-gray-200 rounded-xl">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-500 text-left">
+            <tr>
+              <th className="px-3 py-2">मिति (वि.सं.)</th>
+              <th className="px-3 py-2">कुन शीर्षकमा</th>
+              <th className="px-3 py-2">लाग्ने आ.व.</th>
+              <th className="px-3 py-2">विवरण</th>
+              <th className="px-3 py-2 text-right">रकम</th>
+            </tr>
+          </thead>
+          <tbody>
+            {history.map((entry) => (
+              <tr key={entry.id} className="border-t border-gray-100">
+                <td className="px-3 py-2 whitespace-nowrap text-gray-600">{formatBs(entry.date) || '-'}</td>
+                <td className="px-3 py-2 text-gray-800">{entry.category || '-'}</td>
+                <td className="px-3 py-2 text-gray-600">{entry.fiscalYear ? fiscalYearLabel(fiscalYearFromEndYear(Number(entry.fiscalYear))) : '-'}</td>
+                <td className="px-3 py-2 text-gray-600">{entry.description || '-'}</td>
+                <td className="px-3 py-2 text-right whitespace-nowrap font-semibold text-ncas-success">{formatNPR(entry.amount)}</td>
+              </tr>
+            ))}
+            {!history.length && (
+              <tr><td colSpan="5" className="px-3 py-5 text-center text-gray-500">भुक्तानी रेकर्ड छैन।</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function HistoryStat({ label, value }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className="mt-1 text-base font-bold text-ncas-dark">{value}</div>
     </div>
   )
 }

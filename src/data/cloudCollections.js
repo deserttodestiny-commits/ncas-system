@@ -29,6 +29,7 @@ function memberFromRow(row) {
     organizationName: row.organization_name || '',
     membershipType: row.membership_type || '',
     joinDate: row.join_date,
+    createdAt: row.created_at || '',
     paidThroughFiscalYear: row.paid_through_fiscal_year ?? '',
     monthlyFee: Number(row.monthly_fee) || 0,
     notes: row.notes || '',
